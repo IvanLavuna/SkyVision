@@ -18,6 +18,9 @@ class CupPosition:
         self.height = height
         self.cup_is_present = cup_is_present
 
+    def __str__(self):
+        return f"MyClass(x={self.x}, y={self.y}, w={self.width}, h={self.height})"
+
 
 def locate_cup(img: np.ndarray) -> CupPosition:
     """

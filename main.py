@@ -49,6 +49,8 @@ def processing_loop():
         img = cv2.resize(img, (540, 480))
         img_depth = dpt_model.predict(img)
         cv2.imshow("Image", img_depth)
+        cup_pos = CVAlgorithms.locate_cup(img)
+        print("[info] cup pos: ", cup_pos)
         move_vals = get_keyboard_input()
         my_tello.send_rc_control(move_vals[0], move_vals[1], move_vals[2], move_vals[3])
         cv2.waitKey(1)
