@@ -1,9 +1,12 @@
 from djitellopy import tello
 import cv2
+
+import DPT
 import KeyPress as kp
 import time
 
 my_tello = tello.Tello()
+dpt_model = DPT.DPTModel()
 
 
 def get_keyboard_input() -> [int, int, int, int]:
@@ -43,10 +46,12 @@ def processing_loop():
     while True:
         img = my_tello.get_frame_read().frame
         img = cv2.resize(img, (540, 480))
-        cv2.imshow("Image", img)
+        img_depth = dpt_model.predict(img)
+        cv2.imshow("Image", img_depth)
         move_vals = get_keyboard_input()
         my_tello.send_rc_control(move_vals[0], move_vals[1], move_vals[2], move_vals[3])
         cv2.waitKey(1)
+
 
 def init_everything():
     # tello
