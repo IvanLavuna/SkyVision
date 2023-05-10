@@ -1,6 +1,7 @@
 from djitellopy import tello
 import cv2
 
+import CVAlgorithms
 import DPT
 import KeyPress as kp
 import time

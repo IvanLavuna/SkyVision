@@ -17,7 +17,7 @@ class DPTModel:
         self._model = DPTForDepthEstimation.from_pretrained("Intel/dpt-large")
 
     """
-    :param image - has shape (n, m, 3)
+    @param image - has shape (n, m, 3)
     """
 
     def predict(self, image: np.ndarray) -> np.ndarray:
