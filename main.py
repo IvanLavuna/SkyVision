@@ -51,7 +51,7 @@ def processing_loop():
         cup_rect = CVAlgorithms.locate_cup(img)
         if cup_rect.is_present:
             cv2.rectangle(img, (cup_rect.x, cup_rect.y), (cup_rect.x + cup_rect.width, cup_rect.y + cup_rect.height),
-                          color=(0, 255, 0), thickness=2)
+                          color=(0, 255, 0), thickness=4)
         cv2.imshow("Image", img)
 
         # drone control

@@ -39,8 +39,23 @@ def locate_cup(img: np.ndarray) -> Rectangle:
 
     # Apply the mask to the original image
     red_regions = cv2.bitwise_and(img, img, mask=mask)
+    # cv2.imshow("localte_cup debug", red_regions)
 
-    cv2.imshow("localte_cup debug", red_regions)
+    l, r, u, d = 1000, -1000, 1000, -1000
+    for i in range(img.shape[0]):
+        for j in range(img.shape[1]):
+            if red_regions[i][j][0] != 0:
+                l = min(l, j)
+                r = max(r, j)
+                u = min(u, i)
+                d = max(d, i)
+
+    # square should be at least 50
+    x, y = l, u
+    width = r - l
+    height = d - u
+    if (r-l)*(d-u) > 200 and l != 1000 and r != -1000 and u != 1000 and d != -1000 :
+        return Rectangle(x, y, width, height, True)
 
     return Rectangle()
 
