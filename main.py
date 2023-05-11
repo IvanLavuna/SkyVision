@@ -47,10 +47,14 @@ def processing_loop():
     while True:
         img = my_tello.get_frame_read().frame
         img = cv2.resize(img, (540, 480))
-        img_depth = dpt_model.predict(img)
-        cv2.imshow("Image", img_depth)
-        cup_pos = CVAlgorithms.locate_cup(img)
-        print("[info] cup pos: ", cup_pos)
+        # img_depth = dpt_model.predict(img)
+        cup_rect = CVAlgorithms.locate_cup(img)
+        if cup_rect.is_present:
+            cv2.rectangle(img, (cup_rect.x, cup_rect.y), (cup_rect.x + cup_rect.width, cup_rect.y + cup_rect.height),
+                          color=(0, 255, 0), thickness=2)
+        cv2.imshow("Image", img)
+
+        # drone control
         move_vals = get_keyboard_input()
         my_tello.send_rc_control(move_vals[0], move_vals[1], move_vals[2], move_vals[3])
         cv2.waitKey(1)
