@@ -3,6 +3,7 @@ import cv2
 
 import CVAlgorithms
 import DPT
+import DroneAlgorithms
 import KeyPress as kp
 import time
 
@@ -46,7 +47,7 @@ def get_keyboard_input() -> [int, int, int, int]:
 def processing_loop():
     while True:
         img = my_tello.get_frame_read().frame
-        img = cv2.resize(img, (540, 480))
+        img = cv2.resize(img, (480, 360))
         # img_depth = dpt_model.predict(img)
         cup_rect = CVAlgorithms.locate_cup(img)
         if cup_rect.is_present:

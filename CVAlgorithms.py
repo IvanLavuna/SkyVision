@@ -21,6 +21,21 @@ class Rectangle:
     def __str__(self):
         return f"MyClass(x={self.x}, y={self.y}, w={self.width}, h={self.height})"
 
+def find_bounding_box(img: np.ndarray):
+    red_regions = img[:, :, 0]  # Assuming red_regions is a separate array with shape (img.shape[0], img.shape[1])
+    non_zero_indices = np.nonzero(red_regions)
+    non_zero_rows, non_zero_cols = non_zero_indices[0], non_zero_indices[1]
+
+    if len(non_zero_rows) > 0:
+        l = np.min(non_zero_cols)
+        r = np.max(non_zero_cols)
+        u = np.min(non_zero_rows)
+        d = np.max(non_zero_rows)
+    else:
+        # Handle case when no red regions are found
+        l, r, u, d = 0, 0, 0, 0
+
+    return l, r, u, d
 
 def locate_cup(img: np.ndarray) -> Rectangle:
     """
@@ -41,21 +56,9 @@ def locate_cup(img: np.ndarray) -> Rectangle:
     red_regions = cv2.bitwise_and(img, img, mask=mask)
     # cv2.imshow("localte_cup debug", red_regions)
 
-    l, r, u, d = 1000, -1000, 1000, -1000
-    for i in range(img.shape[0]):
-        for j in range(img.shape[1]):
-            if red_regions[i][j][0] != 0:
-                l = min(l, j)
-                r = max(r, j)
-                u = min(u, i)
-                d = max(d, i)
-
-    # square should be at least 50
-    x, y = l, u
-    width = r - l
-    height = d - u
-    if (r-l)*(d-u) > 200 and l != 1000 and r != -1000 and u != 1000 and d != -1000 :
-        return Rectangle(x, y, width, height, True)
+    l, r, u, d = find_bounding_box(red_regions)
+    if (r - l) * (d - u) > 200 and l != 0 and r != 0 and u != 0 and d != 0 :
+        return Rectangle(l, u, r - l, d - u, True)
 
     return Rectangle()
 
