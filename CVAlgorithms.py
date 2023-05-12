@@ -21,6 +21,7 @@ class Rectangle:
     def __str__(self):
         return f"MyClass(x={self.x}, y={self.y}, w={self.width}, h={self.height})"
 
+
 def find_bounding_box(img: np.ndarray):
     red_regions = img[:, :, 0]  # Assuming red_regions is a separate array with shape (img.shape[0], img.shape[1])
     non_zero_indices = np.nonzero(red_regions)
@@ -36,6 +37,7 @@ def find_bounding_box(img: np.ndarray):
         l, r, u, d = 0, 0, 0, 0
 
     return l, r, u, d
+
 
 def locate_cup(img: np.ndarray) -> Rectangle:
     """
@@ -57,12 +59,10 @@ def locate_cup(img: np.ndarray) -> Rectangle:
     # cv2.imshow("localte_cup debug", red_regions)
 
     l, r, u, d = find_bounding_box(red_regions)
-    if (r - l) * (d - u) > 1000 and l != 0 and r != 0 and u != 0 and d != 0 :
+    if (r - l) * (d - u) > 1000 and l != 0 and r != 0 and u != 0 and d != 0:
         return Rectangle(l, u, r - l, d - u, True)
 
     return Rectangle()
-
-
 
 
 if __name__ == '__main__':

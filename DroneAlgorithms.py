@@ -3,6 +3,7 @@ import numpy as np
 from djitellopy import tello
 import CVAlgorithms
 from queue import Queue
+from Environment import Environment
 
 # 1. A*, whatever
 # 2. Some coordination while flying (I don't believe it flies perfectly)
@@ -16,7 +17,7 @@ objectives = {"initialize drone": False,
 frames = Queue()
 
 
-def next_move(img: np.ndarray, drone: tello.Tello):
+def next_move(env: Environment):
     global objectives
     """
     Assumptions:
@@ -26,28 +27,29 @@ def next_move(img: np.ndarray, drone: tello.Tello):
         - Depends on the objective
     """
     if not objectives["initialize drone"]:
-        initialize_drone(drone)
+        initialize_drone(env)
     elif not objectives["find cup"]:
-        find_cup(img, drone)
+        find_cup(env)
     elif not objectives["pick up cup"]:
-        pick_up_cup(img, drone)
+        pick_up_cup(env)
         # print("[info] objective: 'pick up cup' done!")
     elif not objectives["put down cup"]:
-        put_down_cup(img, drone)
+        put_down_cup(env)
         # print("[info] objective: 'put down cup' done!")
     elif not objectives["land"]:
-        land(img, drone)
+        land(env)
         # print("[info] objective: 'landed' done!")
     else:
         # print("[info] all objectives done!")
         pass
 
-def find_cup(img: np.ndarray, drone: tello.Tello):
+
+def find_cup(env: Environment):
     global objectives
-    cup_rect = CVAlgorithms.locate_cup(img)
+    cup_rect = CVAlgorithms.locate_cup(env.GetLastImage())
     # todo: some movements with stabilization
     if not cup_rect.is_present:
-        drone.send_rc_control(0, 0, 0, 35)
+        env.drone.send_rc_control(0, 0, 0, 35)
         print("[debug]", "rotating...")
         return
 
@@ -55,26 +57,29 @@ def find_cup(img: np.ndarray, drone: tello.Tello):
     print("[info] objective: 'pick up cup' done!")
 
 
-def pick_up_cup(img: np.ndarray, drone: tello.Tello):
+def pick_up_cup(env: Environment):
     '''
     :brief Assumes cup is in the current drone vision
     :goal Take cup on the hook and take off with it on 100 cm
     '''
-    cup_rect = CVAlgorithms.locate_cup(img)
+    cup_rect = CVAlgorithms.locate_cup(env.GetLastImage())
     if not cup_rect.is_present:
         print("[debug]", "rotating...")
         return
-    drone.send_rc_control(0, 20, 0, 0)
+    env.drone.send_rc_control(0, 20, 0, 0)
     my_list = list()
 
     print("[info][pick_up_cup]: moving forward...")
     pass
 
-def put_down_cup(img: np.ndarray, drone: tello.Tello):
+
+def put_down_cup(env: Environment):
     pass
 
-def land(img: np.ndarray, drone: tello.Tello):
+
+def land(env: Environment):
     pass
+
 
 def stabilize(drone: tello.Tello, timeSec: int):
     cur_tp = time.time()
@@ -83,21 +88,22 @@ def stabilize(drone: tello.Tello, timeSec: int):
         print("[debug]", "stabilizing...")
         time.sleep(0.1)
 
-def initialize_drone(drone: tello.Tello):
-    drone.takeoff()
+
+def initialize_drone(env: Environment):
+    env.drone.takeoff()
     time.sleep(3)
-    set_drone_height(drone, 40)
+    set_drone_height(env.drone, 40)
     objectives["initialize drone"] = True
-    stabilize(drone, 4)
+    stabilize(env.drone, 4)
     print("[info] objective: 'initialize drone' done!")
 
 
 def set_drone_height(drone: tello.Tello, cm_height: float):
     while drone.get_height() < cm_height:
         print("[debug] drone height:", drone.get_height())
-        drone.send_rc_control(0, 0, 20, 0);
-    drone.send_rc_control(0, 0, 0, 0);
+        drone.send_rc_control(0, 0, 20, 0)
+    drone.send_rc_control(0, 0, 0, 0)
     while drone.get_height() > cm_height:
         print("[debug] drone height:", drone.get_height())
-        drone.send_rc_control(0, 0, -20, 0);
-    drone.send_rc_control(0, 0, 0, 0);
+        drone.send_rc_control(0, 0, -20, 0)
+    drone.send_rc_control(0, 0, 0, 0)

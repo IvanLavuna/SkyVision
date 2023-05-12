@@ -6,8 +6,10 @@ import DPT
 import DroneAlgorithms
 import KeyPress as kp
 import time
+from Environment import Environment
 
 my_tello = tello.Tello()
+env = Environment(my_tello)
 dpt_model = DPT.DPTModel()
 
 
@@ -48,6 +50,7 @@ def processing_loop():
     while True:
         img = my_tello.get_frame_read().frame
         img = cv2.resize(img, (480, 360))
+        if img: env.AddImage(img)
         # img_depth = dpt_model.predict(img)
         cup_rect = CVAlgorithms.locate_cup(img)
         if cup_rect.is_present:
@@ -59,16 +62,17 @@ def processing_loop():
         move_vals = get_keyboard_input()
         if move_vals[0] != 0 and move_vals[1] != 0 and move_vals[2] != 0 and move_vals[3] != 0:
             my_tello.send_rc_control(move_vals[0], move_vals[1], move_vals[2], move_vals[3])
-        DroneAlgorithms.next_move(img, my_tello)
+        DroneAlgorithms.next_move(env)
         cv2.waitKey(1)
         print("[info][processing_loop] heightCM:", my_tello.get_height())
+
 
 def init_everything():
     # tello
     my_tello.connect()
     print("[info] battery", my_tello.get_battery())
     my_tello.streamon()
-    my_tello.set_video_direction(0) # front camera
+    my_tello.set_video_direction(0)  # front camera
     # KeyPress module
     kp.init()
 
