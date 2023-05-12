@@ -57,15 +57,18 @@ def processing_loop():
 
         # drone control
         move_vals = get_keyboard_input()
-        my_tello.send_rc_control(move_vals[0], move_vals[1], move_vals[2], move_vals[3])
+        if move_vals[0] != 0 and move_vals[1] != 0 and move_vals[2] != 0 and move_vals[3] != 0:
+            my_tello.send_rc_control(move_vals[0], move_vals[1], move_vals[2], move_vals[3])
+        DroneAlgorithms.next_move(img, my_tello)
         cv2.waitKey(1)
-
+        print("[info][processing_loop] heightCM:", my_tello.get_height())
 
 def init_everything():
     # tello
     my_tello.connect()
     print("[info] battery", my_tello.get_battery())
     my_tello.streamon()
+    my_tello.set_video_direction(0) # front camera
     # KeyPress module
     kp.init()
 

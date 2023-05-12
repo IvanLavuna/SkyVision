@@ -57,16 +57,13 @@ def locate_cup(img: np.ndarray) -> Rectangle:
     # cv2.imshow("localte_cup debug", red_regions)
 
     l, r, u, d = find_bounding_box(red_regions)
-    if (r - l) * (d - u) > 200 and l != 0 and r != 0 and u != 0 and d != 0 :
+    if (r - l) * (d - u) > 1000 and l != 0 and r != 0 and u != 0 and d != 0 :
         return Rectangle(l, u, r - l, d - u, True)
 
     return Rectangle()
 
 
-def _locate_cup_test():
-    # load few images: verify it works as expected
-    pass
 
 
 if __name__ == '__main__':
-    _locate_cup_test()
+    pass
