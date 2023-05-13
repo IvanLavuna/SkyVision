@@ -71,11 +71,13 @@ class Agent:
         :brief: Take tello into initial state - take off
         :outcome: drone is on the fly
         """
+        self.LOGGER.info("Initializing...")
         if not self._env.drone.is_flying:
             self._env.drone.takeoff()
             time.sleep(4)  # give some time for tello to take off
         self._cur_state = self._find_cup_state
         self._cur_drone_pos = (0, 0, 0)
+        self.LOGGER.info("Initializing complete!")
         self.LOGGER.info('State changed - cur_state: {}'.format(self._cur_state))
 
     def _find_cup_job(self):
@@ -97,8 +99,8 @@ class Agent:
         else:
             # predict depth map in order to avoid obstacles
             depth_map = dpt_model.predict(cur_img)
-            depth_map = depth_map[int(cur_img.shape[0] / 3): int(2*cur_img.shape[0] / 3),
-                                  int(cur_img.shape[1] / 3): int(2*cur_img.shape[1] / 3)]
+            depth_map = depth_map[int(cur_img.shape[0] / 5): int(4*cur_img.shape[0] / 5),
+                                  int(cur_img.shape[1] / 5): int(4*cur_img.shape[1] / 5)]
             depth_map = 255 - depth_map
             cv.imshow("Depth map cropped", depth_map)  # debug
             distance_cm = np.max(depth_map)
