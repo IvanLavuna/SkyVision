@@ -45,3 +45,6 @@ class DPTModel:
         output = prediction.squeeze().cpu().numpy()
         formatted = (output * 255 / np.max(output)).astype("uint8")
         return formatted
+
+
+dpt_model = DPTModel()

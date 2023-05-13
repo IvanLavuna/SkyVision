@@ -18,6 +18,10 @@ class Rectangle:
         self.height = height
         self.is_present = is_present
 
+    def mid_point(self) -> (int, int):
+        if self.is_present:
+            return self.x + self.width/2, self.y + self.height/2
+
     def __str__(self):
         return f"MyClass(x={self.x}, y={self.y}, w={self.width}, h={self.height})"
 

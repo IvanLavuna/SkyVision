@@ -10,7 +10,6 @@ from Environment import Environment
 
 my_tello = tello.Tello()
 env = Environment(my_tello)
-dpt_model = DPT.DPTModel()
 
 
 def get_keyboard_input() -> [int, int, int, int]:
@@ -50,7 +49,7 @@ def processing_loop():
     while True:
         img = my_tello.get_frame_read().frame
         img = cv2.resize(img, (480, 360))
-        if img: env.AddImage(img)
+        env.AddImage(img)
         # img_depth = dpt_model.predict(img)
         cup_rect = CVAlgorithms.locate_cup(img)
         if cup_rect.is_present:
