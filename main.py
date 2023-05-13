@@ -7,7 +7,7 @@ import DroneAlgorithms
 import KeyPress as kp
 import time
 from Environment import Environment
-
+from DroneAlgorithms import get_distance_to_cup
 my_tello = tello.Tello()
 env = Environment(my_tello)
 
@@ -55,13 +55,16 @@ def processing_loop():
         if cup_rect.is_present:
             cv2.rectangle(img, (cup_rect.x, cup_rect.y), (cup_rect.x + cup_rect.width, cup_rect.y + cup_rect.height),
                           color=(0, 255, 0), thickness=4)
+            dist_to_cup = get_distance_to_cup(img, cup_rect)
+            print("[info][processing_loop]", "dist_to_cup", dist_to_cup)
+
         cv2.imshow("Image", img)
 
         # drone control
         move_vals = get_keyboard_input()
         if move_vals[0] != 0 and move_vals[1] != 0 and move_vals[2] != 0 and move_vals[3] != 0:
             my_tello.send_rc_control(move_vals[0], move_vals[1], move_vals[2], move_vals[3])
-        DroneAlgorithms.next_move(env)
+        # DroneAlgorithms.next_move(env)
         cv2.waitKey(1)
         print("[info][processing_loop] heightCM:", my_tello.get_height())
 

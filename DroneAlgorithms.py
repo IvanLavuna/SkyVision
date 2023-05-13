@@ -5,7 +5,7 @@ import CVAlgorithms
 from queue import Queue
 from Environment import Environment
 from DPT import dpt_model
-
+import cv2
 # 1. A*, whatever
 # 2. Some stabilization while flying (I don't believe it flies perfectly)
 
@@ -71,18 +71,18 @@ def pick_up_cup(env: Environment):
     img = env.GetLastImage()
     rect = CVAlgorithms.locate_cup(img)
     if not rect.is_present:
-        env.drone.send_rc_control(0, 0, 0, 20)
-        print("[debug][pick_up_cup]", "rect was not present. rotating right...")
+        objectives["find cup"] = False
         return
 
     # 1. preserve cup rect
-    x_mid, y_mid = rect.mid_point()
-    if x_mid < img.shape[0] / 2 - 20:
-        env.drone.send_rc_control(0, 0, 0, -20)
+    x_mid, _ = rect.mid_point()
+    print("[debug][pick_up_cup]", "x_mid", x_mid)
+    if x_mid < img.shape[1] / 2 - 20:
+        env.drone.send_rc_control(0, 0, 0, 15)
         print("[debug][pick_up_cup]", "preserving cup rect, moving right")
         return
-    if x_mid > img.shape[0] / 2 + 20:
-        env.drone.send_rc_control(0, 0, 0, 20)
+    if x_mid > img.shape[1] / 2 + 20:
+        env.drone.send_rc_control(0, 0, 0, -15)
         print("[debug][pick_up_cup]", "preserving cup rect, moving left")
         return
 
@@ -90,10 +90,10 @@ def pick_up_cup(env: Environment):
     cup_dist = get_distance_to_cup(img, rect)
     print("[debug][pick_up_cup]", "cup_dist:", cup_dist)
     if cup_dist > 50:  # cm?
-        move(env.drone, 1, 0, 40, 0, 0)
+        move(env.drone, 1, 0, 30, 0, 0)
         print("[debug][pick_up_cup]", "moving forward to cup")
     else:
-        move(env.drone, 1, 0, 40, 10, 0)
+        move(env.drone, 1, 0, 30, 15, 0)
         print("[debug][pick_up_cup]", "cup is nearby")
 
 
@@ -111,10 +111,12 @@ def get_distance_to_cup(img: np.ndarray, rect: CVAlgorithms.Rectangle) -> int:
     :return: integer value which is a distance to a cup
     """
     depth_map = dpt_model.predict(img)
+    cv2.imshow("Depth Map", depth_map)
+
     x, y, width, height = rect.x, rect.y, rect.width, rect.height
 
     # Extract the region of interest (ROI) from the depth map
-    roi = depth_map[y:y+height, x:x+width]
+    roi = depth_map[y+int(height/2-4):y+int(height/2+4), x+int(width/2-4):x+int(width/2+4)]
 
     # Flatten the ROI array to calculate the average distance
     flattened_roi = roi.flatten()
@@ -123,7 +125,7 @@ def get_distance_to_cup(img: np.ndarray, rect: CVAlgorithms.Rectangle) -> int:
     average_distance = np.mean(flattened_roi)
 
     # Round the average distance and return it as an integer
-    return int(round(average_distance))
+    return int(255-round(average_distance))
 
 
 def put_down_cup(env: Environment):
@@ -133,19 +135,10 @@ def put_down_cup(env: Environment):
 def land(env: Environment):
     pass
 
-
-def stabilize(drone: tello.Tello, timeSec: int):
-    cur_tp = time.time()
-    while time.time() - cur_tp < timeSec:
-        drone.send_rc_control(0, 0, 0, 0)
-        print("[debug]", "stabilizing...")
-        time.sleep(0.1)
-
-
 def initialize_drone(env: Environment):
     env.drone.takeoff()
     time.sleep(3)
-    set_drone_height(env.drone, 40)
+    set_drone_height(env.drone, 50)
     objectives["initialize drone"] = True
     print("[info] objective: 'initialize drone' done!")
 
@@ -161,9 +154,20 @@ def move(drone: tello.Tello, timeSec: int, lr=0, fb=0, ud=0, yv=0):
 def set_drone_height(drone: tello.Tello, cm_height: float):
     while drone.get_height() < cm_height:
         print("[debug] drone height:", drone.get_height())
-        drone.send_rc_control(0, 0, 20, 0)
+        drone.send_rc_control(0, 0, 15, 0)
     drone.send_rc_control(0, 0, 0, 0)
     while drone.get_height() > cm_height:
         print("[debug] drone height:", drone.get_height())
-        drone.send_rc_control(0, 0, -20, 0)
+        drone.send_rc_control(0, 0, -15, 0)
     drone.send_rc_control(0, 0, 0, 0)
+
+
+def stabilize_drone(drone: tello.Tello, time_sec: int):
+    # Send the RC control command to stop all movements
+    drone.set_rc_control(0, 0, 0, 0)
+
+    # Wait for the specified time duration
+    time.sleep(time_sec)
+
+    # Send the RC control command again to ensure stabilization
+    drone.set_rc_control(0, 0, 0, 0)
