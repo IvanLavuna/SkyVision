@@ -3,6 +3,7 @@ import time
 from djitellopy import tello
 import cv2
 import numpy as np
+import logging
 
 
 class Environment:
