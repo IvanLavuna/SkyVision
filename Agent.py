@@ -1,8 +1,7 @@
 import time
 import logging
-import CVAlgorithms
+import Algorithms
 from Environment import Environment
-from Algorithms import Algorithms
 from DPT import dpt_model
 import numpy as np
 import cv2 as cv
@@ -91,7 +90,7 @@ class Agent:
         :Note!: There should be only 1 red object in the room in order NOT to confuse agent.
         """
         cur_img = self._env.GetLastImage()
-        rect = CVAlgorithms.locate_cup(cur_img)
+        rect = Algorithms.locate_cup(cur_img)
         if rect.is_present:
             # move to cup in order to make rect area >= _min_cup_rect_area
             self.LOGGER.debug("[find cup job] cup was found! Stabilizing...")

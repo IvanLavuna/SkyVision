@@ -1,6 +1,5 @@
 from djitellopy import tello
 import cv2 as cv
-import CVAlgorithms
 import KeyPress as kp
 from Environment import Environment
 from Agent import Agent
