@@ -1,7 +1,11 @@
 import time
 import logging
+import CVAlgorithms
 from Environment import Environment
 from Algorithms import Algorithms
+from DPT import dpt_model
+import numpy as np
+import cv2 as cv
 
 class Agent:
     """
@@ -29,6 +33,15 @@ class Agent:
     LOGGER.addHandler(FILE_HANDLER)
     LOGGER.setLevel(logging.DEBUG)
 
+    # used in search algorithm, which divides the space into cubes
+    _XY_cube_len = 40  # cm
+    _Z_cube_len = 40  # cm
+
+    # used in 'find cup' job
+    _min_cup_rect_area = 2000
+    _move_from_depth_map_constant = 60
+    _standard_moving_delay_sec = 3
+
     def __init__(self, env: Environment):
         self._cur_state = self._initialization_state
         self._env = env
@@ -40,6 +53,9 @@ class Agent:
             self._land_state: self._land_job,
             self._final_state: self._final_job()
         }
+        # key is a tuple (x, y, z) that indicates drone position
+        self._exploratory_map = set()
+        self._cur_drone_pos = (0, 0, 0)
 
     def next_move(self, env: Environment):
         # update environment
@@ -57,12 +73,47 @@ class Agent:
         """
         if not self._env.drone.is_flying:
             self._env.drone.takeoff()
-            time.sleep(2)  # give some time for tello to take off
+            time.sleep(4)  # give some time for tello to take off
         self._cur_state = self._find_cup_state
-        self.LOGGER.info("State changed", "cur_state", self._cur_state)
+        self._cur_drone_pos = (0, 0, 0)
+        self.LOGGER.info('State changed - cur_state: {}'.format(self._cur_state))
 
     def _find_cup_job(self):
-        pass
+        """
+        :brief:   Divides searching space into blocks. 40 x 40 x 40. There will be 3 blocks(120 cm) for height though to
+                  capture reality of room at home. Drone moves randomly on the bottom and with time deadline for
+                  each block on the Z axis
+        :outcome: Position of cup on the image is somehow in the middle. Area of cup rectangle >= 2000
+        :Note!: There should be only 1 red object in the room in order NOT to confuse agent.
+        """
+        cur_img = self._env.GetLastImage()
+        rect = CVAlgorithms.locate_cup(cur_img)
+        if rect.is_present:
+            # move to cup in order to make rect area >= _min_cup_rect_area
+            self.LOGGER.debug("[find cup job] cup was found! Stabilizing...")
+            self._env.drone.send_rc_control(0, 0, 0, 0)
+            time.sleep(1)
+            pass
+        else:
+            # predict depth map in order to avoid obstacles
+            depth_map = dpt_model.predict(cur_img)
+            depth_map = depth_map[int(cur_img.shape[0] / 3): int(2*cur_img.shape[0] / 3),
+                                  int(cur_img.shape[1] / 3): int(2*cur_img.shape[1] / 3)]
+            depth_map = 255 - depth_map
+            cv.imshow("Depth map cropped", depth_map)  # debug
+            distance_cm = np.max(depth_map)
+            self.LOGGER.debug("[find cup job] distance {}".format(distance_cm))
+            if distance_cm >= self._move_from_depth_map_constant:  # means no obstacles going forward
+                self.LOGGER.debug("[find cup job] moving forward")
+                self._env.drone.move_forward(self._XY_cube_len)
+                time.sleep(self._standard_moving_delay_sec)
+                # self._cur_drone_pos = (self._cur_drone_pos[0], self._cur_drone_pos[1]+1, self._cur_drone_pos[2])
+                # self._exploratory_map.add(self._cur_drone_pos)
+            else:
+                # there are some obstacle
+                self.LOGGER.debug("[find cup job] avoiding obstacle")
+                self._env.drone.rotate_clockwise(90)
+                time.sleep(self._standard_moving_delay_sec)
 
     def _pick_up_cup_job(self):
         pass
