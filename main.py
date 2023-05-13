@@ -1,9 +1,11 @@
 from djitellopy import tello
-import cv2
+import cv2 as cv
 import CVAlgorithms
 import KeyPress as kp
 from Environment import Environment
 from Agent import Agent
+from DPT import dpt_model
+import numpy as np
 
 # global variables
 my_tello = tello.Tello()
@@ -50,7 +52,7 @@ def processing_loop():
     while True:
         # 1. retrieving image
         img = my_tello.get_frame_read().frame
-        img = cv2.resize(img, (480, 360))
+        img = cv.resize(img, (480, 360))
 
         # 2. updating env
         env.AddImage(img)
@@ -58,18 +60,20 @@ def processing_loop():
         # 3. visualization
         cup_rect = CVAlgorithms.locate_cup(img)
         if cup_rect.is_present:
-            cv2.rectangle(img, (cup_rect.x, cup_rect.y), (cup_rect.x + cup_rect.width, cup_rect.y + cup_rect.height),
-                          color=(0, 255, 0), thickness=4)
-        cv2.imshow("Image", img)
+            cv.rectangle(img, (cup_rect.x, cup_rect.y), (cup_rect.x + cup_rect.width, cup_rect.y + cup_rect.height),
+                         color=(0, 255, 0), thickness=4)
+        cv.imshow("Image", img)
 
         # 4. drone manual control
         manual_drone_control_step(my_tello)
 
         # 5. agent control
-        agent.next_move(env)
+        # agent.next_move(env)
 
         # 6. wait 1 ms. Stabilization?
-        cv2.waitKey(1)
+        cv.waitKey(1)
+
+        # 7. Debugging
 
 
 def init_everything():

@@ -99,11 +99,11 @@ class Agent:
         else:
             # predict depth map in order to avoid obstacles
             depth_map = dpt_model.predict(cur_img)
-            depth_map = depth_map[int(cur_img.shape[0] / 5): int(4*cur_img.shape[0] / 5),
-                                  int(cur_img.shape[1] / 5): int(4*cur_img.shape[1] / 5)]
+            depth_map = depth_map[int(cur_img.shape[0] * 0.4): int(cur_img.shape[0] * 0.6),
+                                  int(cur_img.shape[1] * 0.4): int(cur_img.shape[1] * 0.6)]
             depth_map = 255 - depth_map
             cv.imshow("Depth map cropped", depth_map)  # debug
-            distance_cm = np.max(depth_map)
+            distance_cm = np.min(depth_map)
             self.LOGGER.debug("[find cup job] distance {}".format(distance_cm))
             if distance_cm >= self._move_from_depth_map_constant:  # means no obstacles going forward
                 self.LOGGER.debug("[find cup job] moving forward")
