@@ -1,18 +1,17 @@
 from djitellopy import tello
 import cv2
-
 import CVAlgorithms
-import DPT
-import DroneAlgorithms
 import KeyPress as kp
-import time
 from Environment import Environment
-from DroneAlgorithms import get_distance_to_cup
+from Agent import Agent
+
+# global variables
 my_tello = tello.Tello()
 env = Environment(my_tello)
+agent = Agent(env)
 
 
-def get_keyboard_input() -> [int, int, int, int]:
+def manual_drone_control_step(drone: tello.Tello):
     lr, fb, ud, yv = 0, 0, 0, 0
     speed = 50
 
@@ -37,36 +36,40 @@ def get_keyboard_input() -> [int, int, int, int]:
         yv = speed
 
     if kp.get_key('q'):
-        my_tello.land()
+        drone.land()
 
     if kp.get_key('e'):
-        my_tello.takeoff()
+        drone.takeoff()
 
-    return [lr, fb, ud, yv]
+    # give chance for user to interfere
+    if lr != 0 or fb != 0 or ud != 0 or yv != 0:
+        drone.send_rc_control(lr, fb, ud, yv)
 
 
 def processing_loop():
     while True:
+        # 1. retrieving image
         img = my_tello.get_frame_read().frame
         img = cv2.resize(img, (480, 360))
+
+        # 2. updating env
         env.AddImage(img)
-        # img_depth = dpt_model.predict(img)
+
+        # 3. visualization
         cup_rect = CVAlgorithms.locate_cup(img)
         if cup_rect.is_present:
             cv2.rectangle(img, (cup_rect.x, cup_rect.y), (cup_rect.x + cup_rect.width, cup_rect.y + cup_rect.height),
                           color=(0, 255, 0), thickness=4)
-            dist_to_cup = get_distance_to_cup(img, cup_rect)
-            print("[info][processing_loop]", "dist_to_cup", dist_to_cup)
-
         cv2.imshow("Image", img)
 
-        # drone control
-        move_vals = get_keyboard_input()
-        if move_vals[0] != 0 and move_vals[1] != 0 and move_vals[2] != 0 and move_vals[3] != 0:
-            my_tello.send_rc_control(move_vals[0], move_vals[1], move_vals[2], move_vals[3])
-        # DroneAlgorithms.next_move(env)
+        # 4. drone manual control
+        manual_drone_control_step(my_tello)
+
+        # 5. agent control
+        agent.next_move(env)
+
+        # 6. wait 1 ms. Stabilization?
         cv2.waitKey(1)
-        print("[info][processing_loop] heightCM:", my_tello.get_height())
 
 
 def init_everything():

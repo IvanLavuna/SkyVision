@@ -15,8 +15,6 @@ objectives = {"initialize drone": False,
               "put down cup": False,
               "land": False}
 
-frames = Queue()
-
 
 def next_move(env: Environment):
     global objectives
