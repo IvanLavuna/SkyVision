@@ -6,6 +6,7 @@ from Algorithms import Algorithms
 from DPT import dpt_model
 import numpy as np
 import cv2 as cv
+import datetime
 
 class Agent:
     """
@@ -23,7 +24,8 @@ class Agent:
 
     # Set up logger
     CONSOLE_HANDLER = logging.StreamHandler()
-    FILE_HANDLER = logging.FileHandler('application.log')
+    LOG_FILE_NAME = f"logs/run{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.log"
+    FILE_HANDLER = logging.FileHandler(LOG_FILE_NAME)
     FORMATTER = logging.Formatter('[%(asctime)s] - [%(levelname)s] - {%(message)s}')
     CONSOLE_HANDLER.setFormatter(FORMATTER)
     FILE_HANDLER.setFormatter(FORMATTER)
