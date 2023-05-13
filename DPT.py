@@ -1,4 +1,5 @@
 from transformers import DPTImageProcessor, DPTForDepthEstimation
+from transformers import DPTForDepthEstimation, DPTFeatureExtractor
 import torch
 import numpy as np
 from PIL import Image
@@ -13,8 +14,8 @@ class DPTModel:
     """
 
     def __init__(self):
-        self._processor = DPTImageProcessor.from_pretrained("Intel/dpt-large")
-        self._model = DPTForDepthEstimation.from_pretrained("Intel/dpt-large")
+        self._model = DPTForDepthEstimation.from_pretrained("Intel/dpt-hybrid-midas", low_cpu_mem_usage=True)
+        self._feature_extractor = DPTFeatureExtractor.from_pretrained("Intel/dpt-hybrid-midas")
 
     """
     @param image - has shape (n, m, 3)
@@ -27,7 +28,7 @@ class DPTModel:
 
         image = Image.fromarray(np.uint8(image))
         # prepare image for the model
-        inputs = self._processor(images=image, return_tensors="pt")
+        inputs = self._feature_extractor(images=image, return_tensors="pt")
 
         with torch.no_grad():
             outputs = self._model(**inputs)

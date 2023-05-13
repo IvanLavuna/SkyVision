@@ -2,6 +2,7 @@ from djitellopy import tello
 import cv2 as cv
 import KeyPress as kp
 from Environment import Environment
+import Algorithms
 from Agent import Agent
 from DPT import dpt_model
 import numpy as np
@@ -57,7 +58,7 @@ def processing_loop():
         env.AddImage(img)
 
         # 3. visualization
-        cup_rect = CVAlgorithms.locate_cup(img)
+        cup_rect = Algorithms.locate_cup(img)
         if cup_rect.is_present:
             cv.rectangle(img, (cup_rect.x, cup_rect.y), (cup_rect.x + cup_rect.width, cup_rect.y + cup_rect.height),
                          color=(0, 255, 0), thickness=4)
@@ -73,6 +74,14 @@ def processing_loop():
         cv.waitKey(1)
 
         # 7. Debugging
+        depth_map = dpt_model.predict(img)
+        cv.imshow("Depth map", depth_map)
+        depth_map = depth_map[int(img.shape[0] * 0.4): int(img.shape[0] * 0.6),
+                    int(img.shape[1] * 0.4): int(img.shape[1] * 0.6)]
+        depth_map = 255 - depth_map
+        # cv.imshow("Depth map cropped", depth_map)  # debug
+        distance_cm = np.min(depth_map)
+        print("[find cup job] distance {}".format(distance_cm))
 
 
 def init_everything():

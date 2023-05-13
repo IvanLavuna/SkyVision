@@ -7,6 +7,7 @@ import numpy as np
 import cv2 as cv
 import datetime
 
+
 class Agent:
     """
     :brief: Defines states and transitions between them.
@@ -23,7 +24,7 @@ class Agent:
 
     # Set up logger
     CONSOLE_HANDLER = logging.StreamHandler()
-    LOG_FILE_NAME = f"logs/run{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.log"
+    LOG_FILE_NAME = f"logs/{datetime.datetime.now().strftime('%Y.%m.%d.%H.%M.%S')}.log"
     FILE_HANDLER = logging.FileHandler(LOG_FILE_NAME)
     FORMATTER = logging.Formatter('[%(asctime)s] - [%(levelname)s] - {%(message)s}')
     CONSOLE_HANDLER.setFormatter(FORMATTER)
@@ -40,7 +41,7 @@ class Agent:
 
     # used in 'find cup' job
     _min_cup_rect_area = 2000
-    _move_from_depth_map_constant = 60
+    _move_from_depth_map_constant = 80
     _standard_moving_delay_sec = 3
 
     def __init__(self, env: Environment):
@@ -75,7 +76,7 @@ class Agent:
         self.LOGGER.info("Initializing...")
         if not self._env.drone.is_flying:
             self._env.drone.takeoff()
-            time.sleep(4)  # give some time for tello to take off
+            time.sleep(6)  # give some time for tello to take off
         self._cur_state = self._find_cup_state
         self._cur_drone_pos = (0, 0, 0)
         self.LOGGER.info("Initializing complete!")
@@ -103,13 +104,14 @@ class Agent:
             depth_map = depth_map[int(cur_img.shape[0] * 0.4): int(cur_img.shape[0] * 0.6),
                                   int(cur_img.shape[1] * 0.4): int(cur_img.shape[1] * 0.6)]
             depth_map = 255 - depth_map
-            cv.imshow("Depth map cropped", depth_map)  # debug
+            # cv.imshow("Depth map cropped", depth_map)  # debug
             distance_cm = np.min(depth_map)
             self.LOGGER.debug("[find cup job] distance {}".format(distance_cm))
             if distance_cm >= self._move_from_depth_map_constant:  # means no obstacles going forward
                 self.LOGGER.debug("[find cup job] moving forward")
                 self._env.drone.move_forward(self._XY_cube_len)
                 time.sleep(self._standard_moving_delay_sec)
+                self._env.drone.send_rc_control(0, 0, 0, 0)
                 # self._cur_drone_pos = (self._cur_drone_pos[0], self._cur_drone_pos[1]+1, self._cur_drone_pos[2])
                 # self._exploratory_map.add(self._cur_drone_pos)
             else:
@@ -117,6 +119,7 @@ class Agent:
                 self.LOGGER.debug("[find cup job] avoiding obstacle")
                 self._env.drone.rotate_clockwise(90)
                 time.sleep(self._standard_moving_delay_sec)
+                self._env.drone.send_rc_control(0, 0, 0, 0)
 
     def _pick_up_cup_job(self):
         pass
