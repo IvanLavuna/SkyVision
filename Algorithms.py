@@ -1,7 +1,7 @@
 from typing import Type
 import cv2 as cv
 import numpy as np
-
+import os
 
 class Rectangle:
     """
@@ -23,6 +23,18 @@ class Rectangle:
 
     def __str__(self):
         return f"MyClass(x={self.x}, y={self.y}, w={self.width}, h={self.height})"
+
+
+class Circle:
+    def __init__(self, x=None, y=None, radius=None, is_present=False):
+        self.x = x
+        self.y = y
+        self.radius = radius
+        self.is_present = is_present
+
+    def __str__(self):
+        return f"MyClass(x={self.x}, y={self.y}, radius={self.radius})"
+
 
 
 def find_bounding_box(img: np.ndarray):
@@ -65,3 +77,42 @@ def locate_cup(img: np.ndarray) -> Rectangle:
         return Rectangle(l, u, r - l, d - u, True)
 
     return Rectangle()
+
+
+def locate_helipad_as_circle(img: np.ndarray) -> Circle:
+    """
+    :param img: searching area
+    :return: Circle which can be not set if helipad wasn't detected
+    """
+    # Convert the image to a single-channel grayscale image
+    gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+
+    # Blur the image to reduce noise
+    gray = cv.medianBlur(gray, 5)
+
+    # Apply the Hough Circle Transform
+    circles = cv.HoughCircles(gray, cv.HOUGH_GRADIENT, 1, 20, param1=50, param2=30, minRadius=10, maxRadius=30)
+
+    # Ensure at least some circles were found
+    if circles is not None:
+        # Convert the (x, y) coordinates and radius of the circles to integers
+        circles = np.round(circles[0, :]).astype("int")
+
+        # Sort circles by radius
+        circles = sorted(circles, key=lambda x: -x[2])
+
+        return Circle(x=circles[0][0], y=circles[0][1], radius=circles[0][2], is_present=True)
+
+    return Circle()
+
+
+def _locate_helipad_as_circle_test():
+    helipad_dir = "/home/lavuna47/Projects/SkyVision/images/helipad"
+    for filename in os.listdir(helipad_dir):
+        if filename.endswith(".jpg"):
+            img = cv.imread(os.path.join(helipad_dir, filename))
+            locate_helipad_as_circle(img)
+
+
+if __name__ == '__main__':
+    _locate_helipad_as_circle_test()
