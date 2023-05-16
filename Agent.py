@@ -63,7 +63,6 @@ class Agent:
         self._exploratory_map = set()
         self._cur_drone_pos = (0, 0, 0)
         self._cur_camera_direction = self.TELLO_CAMERA_FORWARD
-        env.drone.set_video_direction(self._cur_camera_direction)
 
     def next_move(self):
         # execute job for current state
@@ -139,10 +138,14 @@ class Agent:
                      3. Call embed tello function for landing
         :time:       ?
         """
-        self.__update_camera_direction(self.TELLO_CAMERA_DOWNWARD)
+        if int(time.time()) % 40 < 20:
+            self.__update_camera_direction(self.TELLO_CAMERA_DOWNWARD)
+        if int(time.time()) % 40 >= 20:
+            self.LOGGER.debug("Changing camera direction")
+            self.__update_camera_direction(self.TELLO_CAMERA_FORWARD)
         last_image = self._env.GetLastImage()
         cv.imshow("Downward camera", last_image)
-        pass
+        self.LOGGER.debug("img shape: {}".format(last_image.shape))
 
     def _final_job(self):
         pass
@@ -155,16 +158,6 @@ class Agent:
             return
         self._cur_camera_direction = new_direction
         self._env.drone.set_video_direction(new_direction)
-        if self._cur_camera_direction == self.TELLO_CAMERA_FORWARD:
-            self.LOGGER.debug("[__update_camera_direction] {}".format(new_direction))
-            while len(self._env.GetLastImage().shape) != 3:
-                self.LOGGER.debug("[__update_camera_direction] sleeping...")
-                time.sleep(0.1)
-        elif self._cur_camera_direction == self.TELLO_CAMERA_DOWNWARD:
-            self.LOGGER.debug("[__update_camera_direction] {}".format(new_direction))
-            while len(self._env.GetLastImage().shape) != 2:
-                self.LOGGER.debug("[__update_camera_direction] sleeping...")
-                time.sleep(0.1)
 
     def __change_state(self, prev_state, new_state):
         self._cur_state = new_state

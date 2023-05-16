@@ -1,3 +1,5 @@
+import time
+
 from djitellopy import tello
 import cv2 as cv
 import KeyPress as kp
@@ -69,6 +71,9 @@ def init_everything():
     my_tello.connect()
     print("[info] battery", my_tello.get_battery())
     my_tello.streamon()
+    # set video direction from FORWARD camera
+    # my_tello.set_video_direction(0)
+    time.sleep(1)
     # KeyPress module
     kp.init()
 
