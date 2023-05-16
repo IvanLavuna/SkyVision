@@ -1,9 +1,7 @@
 import time
 
 from djitellopy import tello
-import cv2
 import numpy as np
-import logging
 
 
 class Environment:
@@ -18,31 +16,29 @@ class Environment:
 
     def __init__(self, drone: tello.Tello):
         self.drone = drone
-        self.image_list = []
+        self._image_list = []
 
     def AddImage(self, img: np.ndarray):
-        if len(self.image_list) == self.MAX_IMAGES:
-            self.PopImage()
-        self.image_list.append((time.time(), img))
+        self._image_list.append((time.time(), img))
 
     def PopImage(self):
-        self.image_list.pop(0)
+        self._image_list.pop(0)
 
     def GetImageSize(self):
-        return len(self.image_list)
+        return len(self._image_list)
 
     def GetImages(self):
-        return self.image_list
+        return self._image_list
 
     def Drone(self):
         return self.drone
 
-    def GetLastImage(self):
-        if len(self.image_list) == 0:
+    def GetLastImage(self) -> np.ndarray:
+        if len(self._image_list) == 0:
             raise RuntimeError("There is no images in the list!")
-        return self.image_list[len(self.image_list) - 1][1]
+        return self._image_list[len(self._image_list) - 1][1]
 
-    def GetLastImageWithTimestamp(self):
-        if len(self.image_list) == 0:
+    def GetLastImageWithTimestamp(self) -> (time.time, np.ndarray):
+        if len(self._image_list) == 0:
             raise RuntimeError("There is no images in the list!")
-        return self.image_list[len(self.image_list) - 1]
+        return self._image_list[len(self._image_list) - 1]

@@ -10,7 +10,7 @@ import datetime
 
 class Agent:
     """
-    :brief: Defines states and transitions between them.
+    :brief: - Defines states and transitions between them.
             In each state Agent executes some job. Result job may impact environment and transition
             to new state.
     """
@@ -41,11 +41,15 @@ class Agent:
 
     # used in 'find cup' job
     _min_cup_rect_area = 2000
-    _move_from_depth_map_constant = 80
+    _move_from_depth_map_constant = 60
     _standard_moving_delay_sec = 3
 
+    # some constants
+    TELLO_CAMERA_DOWNWARD = 1
+    TELLO_CAMERA_FORWARD = 0
+
     def __init__(self, env: Environment):
-        self._cur_state = self._initialization_state
+        self._cur_state = self._land_state
         self._env = env
         self._jobs = {
             self._initialization_state: self._initialization_job,
@@ -53,15 +57,15 @@ class Agent:
             self._pick_up_cup_state: self._pick_up_cup_job,
             self._put_down_cup_state: self._put_down_cup_job,
             self._land_state: self._land_job,
-            self._final_state: self._final_job()
+            self._final_state: self._final_job
         }
         # key is a tuple (x, y, z) that indicates drone position
         self._exploratory_map = set()
         self._cur_drone_pos = (0, 0, 0)
+        self._cur_camera_direction = self.TELLO_CAMERA_FORWARD
+        env.drone.set_video_direction(self._cur_camera_direction)
 
-    def next_move(self, env: Environment):
-        # update environment
-        self._env = env
+    def next_move(self):
         # execute job for current state
         self._jobs[self._cur_state]()
 
@@ -70,17 +74,16 @@ class Agent:
 
     def _initialization_job(self):
         """
-        :brief: Take tello into initial state - take off
+        :brief: take off
         :outcome: drone is on the fly
         """
-        self.LOGGER.info("Initializing...")
+        self.LOGGER.debug("Initializing start")
         if not self._env.drone.is_flying:
             self._env.drone.takeoff()
-            time.sleep(6)  # give some time for tello to take off
-        self._cur_state = self._find_cup_state
+            time.sleep(3)  # give some time for tello to take off
         self._cur_drone_pos = (0, 0, 0)
-        self.LOGGER.info("Initializing complete!")
-        self.LOGGER.info('State changed - cur_state: {}'.format(self._cur_state))
+        self.__change_state(self._cur_state, self._find_cup_state)
+        self.LOGGER.debug("Initializing end")
 
     def _find_cup_job(self):
         """
@@ -104,14 +107,13 @@ class Agent:
             depth_map = depth_map[int(cur_img.shape[0] * 0.4): int(cur_img.shape[0] * 0.6),
                                   int(cur_img.shape[1] * 0.4): int(cur_img.shape[1] * 0.6)]
             depth_map = 255 - depth_map
-            # cv.imshow("Depth map cropped", depth_map)  # debug
+            cv.imshow("Depth map cropped", depth_map)  # debug
             distance_cm = np.min(depth_map)
             self.LOGGER.debug("[find cup job] distance {}".format(distance_cm))
             if distance_cm >= self._move_from_depth_map_constant:  # means no obstacles going forward
                 self.LOGGER.debug("[find cup job] moving forward")
-                self._env.drone.move_forward(self._XY_cube_len)
+                self._env.drone.send_rc_control(0, 40, 0, 0)
                 time.sleep(self._standard_moving_delay_sec)
-                self._env.drone.send_rc_control(0, 0, 0, 0)
                 # self._cur_drone_pos = (self._cur_drone_pos[0], self._cur_drone_pos[1]+1, self._cur_drone_pos[2])
                 # self._exploratory_map.add(self._cur_drone_pos)
             else:
@@ -128,7 +130,42 @@ class Agent:
         pass
 
     def _land_job(self):
+        """
+        :definition: helipad - surface on which drone is supposed to land
+        :assumption: Helipad is on the radius of 0.5 meters of the center of drone on 2D.
+        :brief:      Lands on the helipad
+        :algo:       1. Locate helipad
+                     2. Move to that position until some tuned height
+                     3. Call embed tello function for landing
+        :time:       ?
+        """
+        self.__update_camera_direction(self.TELLO_CAMERA_DOWNWARD)
+        last_image = self._env.GetLastImage()
+        cv.imshow("Downward camera", last_image)
         pass
 
     def _final_job(self):
         pass
+
+    """
+        UTILS
+    """
+    def __update_camera_direction(self, new_direction: int):
+        if self._cur_camera_direction == new_direction:
+            return
+        self._cur_camera_direction = new_direction
+        self._env.drone.set_video_direction(new_direction)
+        if self._cur_camera_direction == self.TELLO_CAMERA_FORWARD:
+            self.LOGGER.debug("[__update_camera_direction] {}".format(new_direction))
+            while len(self._env.GetLastImage().shape) != 3:
+                self.LOGGER.debug("[__update_camera_direction] sleeping...")
+                time.sleep(0.1)
+        elif self._cur_camera_direction == self.TELLO_CAMERA_DOWNWARD:
+            self.LOGGER.debug("[__update_camera_direction] {}".format(new_direction))
+            while len(self._env.GetLastImage().shape) != 2:
+                self.LOGGER.debug("[__update_camera_direction] sleeping...")
+                time.sleep(0.1)
+
+    def __change_state(self, prev_state, new_state):
+        self._cur_state = new_state
+        self.LOGGER.info('State changed : `{}` -> `{}`'.format(prev_state, new_state))

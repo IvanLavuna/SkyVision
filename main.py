@@ -2,10 +2,7 @@ from djitellopy import tello
 import cv2 as cv
 import KeyPress as kp
 from Environment import Environment
-import Algorithms
 from Agent import Agent
-from DPT import dpt_model
-import numpy as np
 
 # global variables
 my_tello = tello.Tello()
@@ -57,31 +54,14 @@ def processing_loop():
         # 2. updating env
         env.AddImage(img)
 
-        # 3. visualization
-        cup_rect = Algorithms.locate_cup(img)
-        if cup_rect.is_present:
-            cv.rectangle(img, (cup_rect.x, cup_rect.y), (cup_rect.x + cup_rect.width, cup_rect.y + cup_rect.height),
-                         color=(0, 255, 0), thickness=4)
-        cv.imshow("Image", img)
-
-        # 4. drone manual control
+        # 3. drone manual control
         manual_drone_control_step(my_tello)
 
-        # 5. agent control
-        # agent.next_move(env)
+        # 4. agent control
+        agent.next_move()
 
-        # 6. wait 1 ms. Stabilization?
+        # 5. wait 1 ms. Stabilization?
         cv.waitKey(1)
-
-        # 7. Debugging
-        depth_map = dpt_model.predict(img)
-        cv.imshow("Depth map", depth_map)
-        depth_map = depth_map[int(img.shape[0] * 0.4): int(img.shape[0] * 0.6),
-                    int(img.shape[1] * 0.4): int(img.shape[1] * 0.6)]
-        depth_map = 255 - depth_map
-        # cv.imshow("Depth map cropped", depth_map)  # debug
-        distance_cm = np.min(depth_map)
-        print("[find cup job] distance {}".format(distance_cm))
 
 
 def init_everything():
@@ -89,7 +69,6 @@ def init_everything():
     my_tello.connect()
     print("[info] battery", my_tello.get_battery())
     my_tello.streamon()
-    my_tello.set_video_direction(0)  # front camera
     # KeyPress module
     kp.init()
 
