@@ -1,16 +1,16 @@
 import time
-
 from djitellopy import tello
 import cv2 as cv
 import KeyPress as kp
 from Environment import Environment
 from Agent import Agent
+import datetime
 
 # global variables
 my_tello = tello.Tello()
 env = Environment(my_tello)
 agent = Agent(env)
-
+images_path = "/home/lavuna47/Projects/SkyVision/images"
 
 def manual_drone_control_step(drone: tello.Tello):
     lr, fb, ud, yv = 0, 0, 0, 0
@@ -64,6 +64,11 @@ def processing_loop():
 
         # 5. wait 1 ms. Stabilization?
         cv.waitKey(1)
+
+        # 6. save image if z was pressed
+        if kp.get_key('z'):
+            cv.imwrite(f"{images_path}/helipad/helipad_{datetime.datetime.now().strftime('%Y.%m.%d.%H.%M.%S')}.jpg", img)
+            time.sleep(1)
 
 
 def init_everything():

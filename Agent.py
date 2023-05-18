@@ -6,7 +6,7 @@ from DPT import dpt_model
 import numpy as np
 import cv2 as cv
 import datetime
-
+import math
 
 class Agent:
     """
@@ -47,6 +47,7 @@ class Agent:
     # some constants
     TELLO_CAMERA_DOWNWARD = 1
     TELLO_CAMERA_FORWARD = 0
+    _downward_camera_center = (200, 180)
 
     def __init__(self, env: Environment):
         self._cur_state = self._land_state
@@ -63,6 +64,7 @@ class Agent:
         self._exploratory_map = set()
         self._cur_drone_pos = (0, 0, 0)
         self._cur_camera_direction = self.TELLO_CAMERA_FORWARD
+        self._successful_counter = 0
 
     def next_move(self):
         # execute job for current state
@@ -129,6 +131,7 @@ class Agent:
         pass
 
     def _land_job(self):
+
         """
         :definition: helipad - surface on which drone is supposed to land
         :assumption: Helipad is on the radius of 0.5 meters of the center of drone on 2D.
@@ -138,14 +141,51 @@ class Agent:
                      3. Call embed tello function for landing
         :time:       ?
         """
-        if int(time.time()) % 40 < 20:
+        if self._cur_camera_direction != self.TELLO_CAMERA_DOWNWARD:
             self.__update_camera_direction(self.TELLO_CAMERA_DOWNWARD)
-        if int(time.time()) % 40 >= 20:
-            self.LOGGER.debug("Changing camera direction")
-            self.__update_camera_direction(self.TELLO_CAMERA_FORWARD)
-        last_image = self._env.GetLastImage()
-        cv.imshow("Downward camera", last_image)
-        self.LOGGER.debug("img shape: {}".format(last_image.shape))
+            return
+
+        # take of temporally
+        if not self._env.drone.is_flying:
+            self._env.drone.takeoff()
+            time.sleep(3)  # give some time for tello to take off
+
+        img = self._env.GetLastImage()
+        circle = Algorithms.locate_helipad_as_circle(img)
+
+        if circle.is_present:
+            # debug, visualization
+            cv.circle(img, (circle.x, circle.y), circle.radius, (0, 255, 0), 2)
+            cv.circle(img, self._downward_camera_center, 3, (255, 0, 0), 5)
+
+            cv.imshow("Downward camera img", img)
+            # calculate rotation
+
+            yaw = self.__land_job_calculate_yaw(circle)
+            self.LOGGER.debug("yaw: {}".format(yaw))
+            dist_to_center = math.dist(self._downward_camera_center, (circle.x, circle.y))
+            self.LOGGER.debug("dist_to_center: {}".format(dist_to_center))
+            self.LOGGER.debug("height: {}".format(self._env.drone.get_height()))
+
+            if self._env.drone.get_height() > 50:
+                self._env.drone.send_rc_control(0, 0, -30, 0)  # move down
+
+            elif dist_to_center <= 25:
+                if self._successful_counter > 50:
+                    self._env.drone.land()
+                else:
+                    self._env.drone.send_rc_control(0, 0, 0, 0)
+                self._successful_counter += 1
+            elif abs(yaw) <= 20:  # can move backward
+                self._env.drone.send_rc_control(0, -10, 0, 0)  # move backward
+            else:
+                if yaw < 0:
+                    self._env.drone.send_rc_control(0, 0, 0, -10)  # rotate
+                else:
+                    self._env.drone.send_rc_control(0, 0, 0, 10)  # rotate
+
+        else:
+            self._env.drone.send_rc_control(0, 0, 0, 0)
 
     def _final_job(self):
         pass
@@ -162,3 +202,20 @@ class Agent:
     def __change_state(self, prev_state, new_state):
         self._cur_state = new_state
         self.LOGGER.info('State changed : `{}` -> `{}`'.format(prev_state, new_state))
+
+    def __land_job_calculate_yaw(self, circle: Algorithms.Circle) -> int:
+        """
+        :param circle:
+        :return: [-180 : +180] value - degrees needed to rotate
+        """
+        c_x = circle.x - self._downward_camera_center[0]
+        c_y = circle.y - self._downward_camera_center[1]
+
+        radians = math.atan2(c_x, c_y) - math.pi/2
+        degrees = int(math.degrees(radians))
+        degrees = 360 + degrees
+        if degrees > 180:
+            return 360 - degrees
+        return degrees
+
+
