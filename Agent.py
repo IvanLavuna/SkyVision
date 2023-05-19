@@ -65,6 +65,7 @@ class Agent:
         self._cur_drone_pos = (0, 0, 0)
         self._cur_camera_direction = self.TELLO_CAMERA_FORWARD
         self._successful_counter = 0
+        self._land_job_complete = False
 
     def next_move(self):
         # execute job for current state
@@ -141,24 +142,25 @@ class Agent:
                      3. Call embed tello function for landing
         :time:       ?
         """
+        if self._land_job_complete:
+            return
         if self._cur_camera_direction != self.TELLO_CAMERA_DOWNWARD:
             self.__update_camera_direction(self.TELLO_CAMERA_DOWNWARD)
             return
 
-        # take of temporally
+        # take off
         if not self._env.drone.is_flying:
             self._env.drone.takeoff()
             time.sleep(3)  # give some time for tello to take off
 
         img = self._env.GetLastImage()
         circle = Algorithms.locate_helipad_as_circle(img)
+        cv.circle(img, self._downward_camera_center, 3, (255, 0, 0), 5)
 
         if circle.is_present:
             # debug, visualization
             cv.circle(img, (circle.x, circle.y), circle.radius, (0, 255, 0), 2)
-            cv.circle(img, self._downward_camera_center, 3, (255, 0, 0), 5)
 
-            cv.imshow("Downward camera img", img)
             # calculate rotation
 
             yaw = self.__land_job_calculate_yaw(circle)
@@ -185,7 +187,9 @@ class Agent:
                     self._env.drone.send_rc_control(0, 0, 0, 10)  # rotate
 
         else:
-            self._env.drone.send_rc_control(0, 0, 0, 0)
+            self._env.drone.send_rc_control(0, 0, 0, 25)
+
+        cv.imshow("Downward camera img", img)
 
     def _final_job(self):
         pass
