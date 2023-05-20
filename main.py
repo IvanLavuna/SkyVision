@@ -14,7 +14,7 @@ images_path = "/home/lavuna47/Projects/SkyVision/images"
 
 def manual_drone_control_step(drone: tello.Tello):
     lr, fb, ud, yv = 0, 0, 0, 0
-    speed = 50
+    speed = 30
 
     if kp.get_key("LEFT"):
         lr = -speed
@@ -53,8 +53,8 @@ def processing_loop():
         time_point_begin = time.time()
         # 1. retrieving image
         img = my_tello.get_frame_read().frame
-        img = cv.resize(img, (480, 360))
-
+        # img = cv.resize(img, (720, 480))
+        # cv.imshow("Image", img)
         # 2. updating env
         env.AddImage(img)
 
@@ -74,9 +74,9 @@ def processing_loop():
 
         time_point_end = time.time()
 
-        # if time_point_end - time_point_begin < dt:
-        #     time_to_sleep = dt - (time_point_end - time_point_begin)
-        #     time.sleep(time_to_sleep)
+        if time_point_end - time_point_begin < dt:
+            time_to_sleep = dt - (time_point_end - time_point_begin)
+            time.sleep(time_to_sleep)
 
 
 def init_everything():
@@ -85,7 +85,7 @@ def init_everything():
     print("[info] battery", my_tello.get_battery())
     my_tello.streamon()
     # set video direction from FORWARD camera
-    # my_tello.set_video_direction(0)
+    my_tello.set_video_direction(0)
     time.sleep(1)
     # KeyPress module
     kp.init()
