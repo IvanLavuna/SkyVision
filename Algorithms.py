@@ -79,7 +79,7 @@ def locate_cup(img: np.ndarray) -> Rectangle:
     return Rectangle()
 
 
-def locate_helipad_as_circle(img: np.ndarray) -> Circle:
+def locate_circles(img: np.ndarray) -> list[Circle]:
     """
     :param img: searching area
     :return: Circle which can be not set if helipad wasn't detected
@@ -101,17 +101,26 @@ def locate_helipad_as_circle(img: np.ndarray) -> Circle:
         # Sort circles by radius
         circles = sorted(circles, key=lambda x: -x[2])
 
-        return Circle(x=circles[0][0], y=circles[0][1], radius=circles[0][2], is_present=True)
+        return [Circle(x=circle[0], y=circle[1], radius=circle[2], is_present=True) for circle in circles]
 
-    return Circle()
+    return []
 
+def average(circles: list[Circle]) -> (int, int):
+    if len(circles) == 0:
+        return 0, 0
+    x = circles[0].x
+    y = circles[0].y
+    for i in range(1, len(circles)):
+        x += circles[i].x
+        y += circles[i].y
+    return int(x/len(circles)), int(y/len(circles))
 
 def _locate_helipad_as_circle_test():
     helipad_dir = "/home/lavuna47/Projects/SkyVision/images/helipad"
     for filename in os.listdir(helipad_dir):
         if filename.endswith(".jpg"):
             img = cv.imread(os.path.join(helipad_dir, filename))
-            locate_helipad_as_circle(img)
+            locate_circles(img)
 
 
 if __name__ == '__main__':

@@ -74,9 +74,9 @@ def processing_loop():
 
         time_point_end = time.time()
 
-        if time_point_end - time_point_begin < dt:
-            time_to_sleep = dt - (time_point_end - time_point_begin)
-            time.sleep(time_to_sleep)
+        # if time_point_end - time_point_begin < dt:
+        #     time_to_sleep = dt - (time_point_end - time_point_begin)
+        #     time.sleep(time_to_sleep)
 
 
 def init_everything():
