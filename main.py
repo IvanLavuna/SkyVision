@@ -64,7 +64,7 @@ def processing_loop():
         manual_drone_control_step(my_tello)
 
         # 4. agent control
-        # agent.next_move()
+        agent.next_move()
 
         # 5. wait 1 ms. Stabilization?
         cv.waitKey(1)

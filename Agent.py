@@ -20,6 +20,8 @@ class Agent:
     _find_cup_state = "find cup state"
     _pick_up_cup_state = "pick up cup state"
     _put_down_cup_state = "put down cup state"
+    _wait_until_human_will_take_cup_state = "wait until human will take cup state"
+    _fly_above_state = "fly above state"
     _land_state = "land state"
     _final_state = "final state"
 
@@ -36,22 +38,13 @@ class Agent:
     LOGGER.addHandler(FILE_HANDLER)
     LOGGER.setLevel(logging.DEBUG)
 
-    # used in search algorithm, which divides the space into cubes
-    _XY_cube_len = 40  # cm
-    _Z_cube_len = 40  # cm
-
-    # used in 'find cup' job
-    _min_cup_rect_area = 2000
-    _move_from_depth_map_constant = 60
-    _standard_moving_delay_sec = 3
-
     # some constants
     TELLO_CAMERA_DOWNWARD = 1
     TELLO_CAMERA_FORWARD = 0
     _downward_camera_center = (200, 180)
 
     def __init__(self, env: Environment):
-        self._cur_state = self._land_state
+        self._cur_state = self._initialization_state
         self._env = env
         self._jobs = {
             self._initialization_state: self._initialization_job,
@@ -59,7 +52,9 @@ class Agent:
             self._pick_up_cup_state: self._pick_up_cup_job,
             self._put_down_cup_state: self._put_down_cup_job,
             self._land_state: self._land_job,
-            self._final_state: self._final_job
+            self._final_state: self._final_job,
+            self._wait_until_human_will_take_cup_state: self._wait_until_human_will_take_cup_job,
+            self._fly_above_state: self._fly_above_job
         }
         # key is a tuple (x, y, z) that indicates drone position
         self._exploratory_map = set()
@@ -74,6 +69,15 @@ class Agent:
     def get_state(self):
         return self._cur_state
 
+    def _wait_until_human_will_take_cup_job(self):
+        """
+        :brief: For now it will just hang in the air.
+                Later it should recognise from bottom camera that human took a cup
+        :return:
+        """
+        self._env.drone.send_rc_control(0, 0, 0, 0)
+        pass
+
     def _initialization_job(self):
         """
         :brief: take off
@@ -86,6 +90,13 @@ class Agent:
         self._cur_drone_pos = (0, 0, 0)
         self.__change_state(self._cur_state, self._find_cup_state)
         self.LOGGER.debug("Initializing end")
+
+    # some hyperparameters for a given job
+    _min_cup_rect_area = 2000
+    _move_from_depth_map_constant = 60
+    _standard_moving_delay_sec = 3
+    _XY_cube_len = 40  # cm
+    _Z_cube_len = 40  # cm
 
     def _find_cup_job(self):
         """
@@ -101,7 +112,7 @@ class Agent:
             # move to cup in order to make rect area >= _min_cup_rect_area
             self.LOGGER.debug("[find cup job] cup was found! Stabilizing...")
             self._env.drone.send_rc_control(0, 0, 0, 0)
-            time.sleep(1)
+            self._cur_state = self._pick_up_cup_state
             pass
         else:
             # predict depth map in order to avoid obstacles
@@ -126,7 +137,24 @@ class Agent:
                 self._env.drone.send_rc_control(0, 0, 0, 0)
 
     def _pick_up_cup_job(self):
+        """
+        :brief: Assumes that cup was found. Pick up cup means hook it and fly up on some distance above ground
+        :transition: -> _fly_above
+        :algo:  1. minimize distance between drone and cup until specific point
+                2. by some parabola trajectory -> try to pick up cup [only 1 try!]
+                3. transition into _fly_above_state
+        """
         pass
+
+    def _fly_above_job(self):
+        """
+        :brief:      -> flies on a specific position and then holds
+        :transition: -> wait_until_human_will_take_cup
+        """
+        if self._env.drone.get_height() < 100:
+            self._env.drone.send_rc_control(0, 0, 60, 0)
+        else:
+            self._cur_state = self._wait_until_human_will_take_cup_state
 
     def _put_down_cup_job(self):
         pass
