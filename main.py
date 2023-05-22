@@ -1,6 +1,8 @@
 import time
 from djitellopy import tello
 import cv2 as cv
+import Algorithms
+import DPT
 import KeyPress as kp
 from Environment import Environment
 from Agent import Agent
@@ -27,7 +29,7 @@ def manual_drone_control_step(drone: tello.Tello):
         fb = -speed
 
     if kp.get_key("w"):
-        ud = speed
+        ud = 2*speed
     elif kp.get_key("s"):
         ud = -speed
 
@@ -43,8 +45,8 @@ def manual_drone_control_step(drone: tello.Tello):
         drone.takeoff()
 
     # give chance for user to interfere
-    if lr != 0 or fb != 0 or ud != 0 or yv != 0:
-        drone.send_rc_control(lr, fb, ud, yv)
+    # if lr != 0 or fb != 0 or ud != 0 or yv != 0:
+    drone.send_rc_control(lr, fb, ud, yv)
 
 
 def processing_loop():
@@ -53,8 +55,8 @@ def processing_loop():
         time_point_begin = time.time()
         # 1. retrieving image
         img = my_tello.get_frame_read().frame
-        # img = cv.resize(img, (720, 480))
-        # cv.imshow("Image", img)
+        img = cv.resize(img, (420, 360))
+        cv.imshow("Image", img)
         # 2. updating env
         env.AddImage(img)
 
@@ -62,7 +64,7 @@ def processing_loop():
         manual_drone_control_step(my_tello)
 
         # 4. agent control
-        agent.next_move()
+        # agent.next_move()
 
         # 5. wait 1 ms. Stabilization?
         cv.waitKey(1)
