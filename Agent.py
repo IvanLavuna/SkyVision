@@ -10,6 +10,7 @@ import math
 import KeyPress as kp
 import random
 
+
 class Agent:
     """
     :brief: - Defines states and transitions between them.
@@ -138,6 +139,7 @@ class Agent:
     _last_fc_action = 0
     _current_fc_action = 0
     _action_timer = time.time()
+
     def _find_cup_job(self):
         """
         :brief:  Searches for cup by randomly picking directing and avoiding obstacles
@@ -203,7 +205,6 @@ class Agent:
         if self._env.drone.get_height() > 40:
             self._env.drone.send_rc_control(0, 0, -15, 0)
         self._cur_state = self._manual_control_state
-
 
     def _fly_above_job(self):
         """
@@ -301,8 +302,8 @@ class Agent:
         :param depth_map: depth map of some image
         :return: value [0: 255] which tells distance in cm to object
         """
-        depth_map = depth_map[int(depth_map.shape[0] * 0.3): int(depth_map.shape[0] * 0.7),
-                              int(depth_map.shape[1] * 0.3): int(depth_map.shape[1] * 0.7)]
+        depth_map = depth_map[int(depth_map.shape[0] * 0.4): int(depth_map.shape[0] * 0.6),
+                              int(depth_map.shape[1] * 0.4): int(depth_map.shape[1] * 0.6)]
         depth_map = 255 - depth_map
         distance_cm = np.min(depth_map)
         return distance_cm
