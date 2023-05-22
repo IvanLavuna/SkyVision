@@ -165,8 +165,8 @@ class Agent:
 
             # choose action
             # 1. move forward
-            # 2. rotate 90 degrees clockwise
-            # 3. rotate 90 degrees counterclockwise
+            # 2. rotate x degrees clockwise
+            # 3. rotate x degrees counterclockwise
             # 4. rotate for some time cover major piece of land
             if self._last_fc_action == 4:
                 action = random.randint(1, 3)
@@ -185,14 +185,14 @@ class Agent:
                     self.__move_for(0, 20, 0, 0, timeSec=1.5)
                 else:
                     # there are some obstacle
-                    self._env.drone.rotate_clockwise(90)
+                    self.__move_for(0, 0, 0, 30, 3)
                     self._env.drone.send_rc_control(0, 0, 0, 0)
             elif action == 2:
                 self.LOGGER.debug("[_find_cup_job][action 2]")
-                self._env.drone.rotate_clockwise(90)
+                self.__move_for(0, 0, 0, 30, 3)
             elif action == 3:
                 self.LOGGER.debug("[_find_cup_job][action 3]")
-                self._env.drone.rotate_counter_clockwise(90)
+                self.__move_for(0, 0, 0, -30, 3)
             elif action == 4:
                 self.LOGGER.debug("[_find_cup_job][action 4]")
                 cur_timer = time.time()
