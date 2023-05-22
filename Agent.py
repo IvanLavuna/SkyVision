@@ -136,7 +136,8 @@ class Agent:
     _success_timer = time.time()
     _first_time = False
     _last_fc_action = 0
-
+    _current_fc_action = 0
+    _action_timer = time.time()
     def _find_cup_job(self):
         """
         :brief:  Searches for cup by randomly picking directing and avoiding obstacles
@@ -146,6 +147,7 @@ class Agent:
 
         if self._env.drone.get_height() > self._drone_job_height:
             self._env.drone.send_rc_control(0, 0, -15, 0)
+            return
 
         cur_img = self._env.GetLastImage()
         rect = Algorithms.locate_cup(cur_img)
@@ -168,41 +170,17 @@ class Agent:
             # 2. rotate x degrees clockwise
             # 3. rotate x degrees counterclockwise
             # 4. rotate for some time cover major piece of land
-            if self._last_fc_action == 4:
-                action = random.randint(1, 3)
-            else:
-                action = random.randint(1, 4)
-
-            self._last_fc_action = action
-            if action == 1:
-                self.LOGGER.debug("[_find_cup_job][action 1]")
-                # predict depth map in order to avoid obstacles
-                depth_map = dpt_model.predict(cur_img)
-                # cv.imshow("Depth map cropped", depth_map)  # debug
-                distance_cm = self.__get_distance_as_int(depth_map)
-                self.LOGGER.debug("[find cup job] distance {}".format(distance_cm))
-                if distance_cm >= self._should_move_dist:  # means no obstacles going forward
-                    self.__move_for(0, 20, 0, 0, timeSec=1.5)
-                else:
-                    # there are some obstacle
-                    self.__move_for(0, 0, 0, 30, 3)
-                    self._env.drone.send_rc_control(0, 0, 0, 0)
-            elif action == 2:
-                self.LOGGER.debug("[_find_cup_job][action 2]")
-                self.__move_for(0, 0, 0, 30, 3)
-            elif action == 3:
-                self.LOGGER.debug("[_find_cup_job][action 3]")
-                self.__move_for(0, 0, 0, -30, 3)
-            elif action == 4:
-                self.LOGGER.debug("[_find_cup_job][action 4]")
-                cur_timer = time.time()
-                while time.time() - cur_timer < 10:
-                    cur_img = self._env.GetLastImage()
-                    rect = Algorithms.locate_cup(cur_img)
-                    if rect.is_present and rect.height * rect.width >= self._min_cup_rect_area:
-                        self._env.drone.send_rc_control(0, 0, 0, 0)
-                        break
-                    self._env.drone.send_rc_control(0, 0, 0, 15)
+            self.LOGGER.debug("[_find_cup_job][action 1]")
+            # predict depth map in order to avoid obstacles
+            depth_map = dpt_model.predict(cur_img)
+            # cv.imshow("Depth map cropped", depth_map)  # debug
+            distance_cm = self.__get_distance_as_int(depth_map)
+            self.LOGGER.debug("[find cup job] distance {}".format(distance_cm))
+            if distance_cm >= self._should_move_dist:  # means no obstacles going forward
+                self.__move_for(0, 20, 0, 0, timeSec=1.5)
+            else:  # there is some obstacle
+                # rotate
+                self.__move_for(0, 00, 0, 30, timeSec=4)
 
     def _pick_up_cup_job(self):
         """
