@@ -130,9 +130,9 @@ class Agent:
         self._env.drone.send_rc_control(lr, fb, ud, yv)
 
     # hyperparameters & variables of job state
-    _min_cup_rect_area = 1000
+    _min_cup_rect_area = 300
     _should_move_dist = 60
-    _drone_job_height = 120
+    _drone_job_height = 70
     _success_timer = time.time()
     _first_time = False
     _last_fc_action = 0
@@ -146,18 +146,21 @@ class Agent:
         """
 
         if self._env.drone.get_height() > self._drone_job_height:
-            self._env.drone.send_rc_control(0, 0, -15, 0)
+            self.LOGGER.debug("cur height : {}".format(self._env.drone.get_height()))
+            self._env.drone.send_rc_control(0, 0, -20, 0)
             return
 
         cur_img = self._env.GetLastImage()
         rect = Algorithms.locate_cup(cur_img)
 
         if rect.is_present and rect.height * rect.width >= self._min_cup_rect_area:  # cup was found
+            cv.rectangle(cur_img, (rect.x, rect.y), (rect.x + rect.width, rect.y + rect.height), (255, 0, 0), 3)
+
             self.LOGGER.debug("[_find_cup_job] CUP WAS FOUND!")
             if not self._first_time:
                 self._success_timer = time.time()
                 self._first_time = True
-            if time.time() - self._success_timer >= 2:
+            if time.time() - self._success_timer >= 1:
                 self._env.drone.send_rc_control(0, 0, 0, 0)
                 self.__change_state(self._cur_state, self._pick_up_cup_state)
             else:
@@ -170,7 +173,7 @@ class Agent:
             # 2. rotate x degrees clockwise
             # 3. rotate x degrees counterclockwise
             # 4. rotate for some time cover major piece of land
-            self.LOGGER.debug("[_find_cup_job][action 1]")
+
             # predict depth map in order to avoid obstacles
             depth_map = dpt_model.predict(cur_img)
             # cv.imshow("Depth map cropped", depth_map)  # debug
@@ -178,9 +181,15 @@ class Agent:
             self.LOGGER.debug("[find cup job] distance {}".format(distance_cm))
             if distance_cm >= self._should_move_dist:  # means no obstacles going forward
                 self.__move_for(0, 20, 0, 0, timeSec=1.5)
+                self.LOGGER.debug("[find cup job] move forward")
+                self.__move_for(0, 0, 0, 0, timeSec=0.2)
             else:  # there is some obstacle
                 # rotate
-                self.__move_for(0, 00, 0, 30, timeSec=4)
+                self.__move_for(0, 0, 0, 20, timeSec=6)
+                self.LOGGER.debug("[find cup job] rotate")
+                self.__move_for(0, 0, 0, 0, timeSec=0.2)
+
+        cv.imshow("find cup", cur_img)
 
     def _pick_up_cup_job(self):
         """
@@ -292,8 +301,8 @@ class Agent:
         :param depth_map: depth map of some image
         :return: value [0: 255] which tells distance in cm to object
         """
-        depth_map = depth_map[int(depth_map.shape[0] * 0.35): int(depth_map.shape[0] * 0.65),
-                              int(depth_map.shape[1] * 0.35): int(depth_map.shape[1] * 0.65)]
+        depth_map = depth_map[int(depth_map.shape[0] * 0.3): int(depth_map.shape[0] * 0.7),
+                              int(depth_map.shape[1] * 0.3): int(depth_map.shape[1] * 0.7)]
         depth_map = 255 - depth_map
         distance_cm = np.min(depth_map)
         return distance_cm
