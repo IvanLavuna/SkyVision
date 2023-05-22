@@ -7,7 +7,8 @@ import numpy as np
 import cv2 as cv
 import datetime
 import math
-
+import KeyPress as kp
+import random
 
 class Agent:
     """
@@ -24,6 +25,7 @@ class Agent:
     _fly_above_state = "fly above state"
     _land_state = "land state"
     _final_state = "final state"
+    _manual_control_state = "manual control state"
 
     # Set up logger
     CONSOLE_HANDLER = logging.StreamHandler()
@@ -54,7 +56,8 @@ class Agent:
             self._land_state: self._land_job,
             self._final_state: self._final_job,
             self._wait_until_human_will_take_cup_state: self._wait_until_human_will_take_cup_job,
-            self._fly_above_state: self._fly_above_job
+            self._fly_above_state: self._fly_above_job,
+            self._manual_control_state: self._manual_control_job,
         }
         # key is a tuple (x, y, z) that indicates drone position
         self._exploratory_map = set()
@@ -91,50 +94,115 @@ class Agent:
         self.__change_state(self._cur_state, self._find_cup_state)
         self.LOGGER.debug("Initializing end")
 
-    # some hyperparameters for a given job
-    _min_cup_rect_area = 2000
-    _move_from_depth_map_constant = 60
-    _standard_moving_delay_sec = 3
-    _XY_cube_len = 40  # cm
-    _Z_cube_len = 40  # cm
+    def _manual_control_job(self):
+        self.LOGGER.debug("[_manual_control_job]")
+        lr, fb, ud, yv = 0, 0, 0, 0
+        speed = 30
+
+        if kp.get_key("LEFT"):
+            lr = -speed
+        elif kp.get_key("RIGHT"):
+            lr = speed
+
+        if kp.get_key("UP"):
+            fb = speed
+        elif kp.get_key("DOWN"):
+            fb = -speed
+
+        if kp.get_key("w"):
+            ud = 2 * speed
+        elif kp.get_key("s"):
+            ud = -speed
+
+        if kp.get_key("a"):
+            yv = -speed
+        elif kp.get_key("d"):
+            yv = speed
+
+        if kp.get_key('q'):
+            self._env.drone.land()
+
+        if kp.get_key('e'):
+            self._env.drone.takeoff()
+
+        # give chance for user to interfere
+        # if lr != 0 or fb != 0 or ud != 0 or yv != 0:
+        self._env.drone.send_rc_control(lr, fb, ud, yv)
+
+    # hyperparameters & variables of job state
+    _min_cup_rect_area = 1000
+    _should_move_dist = 60
+    _drone_job_height = 120
+    _success_timer = time.time()
+    _first_time = False
+    _last_fc_action = 0
 
     def _find_cup_job(self):
         """
-        :brief:   Divides searching space into blocks. 40 x 40 x 40. There will be 3 blocks(120 cm) for height though to
-                  capture reality of room at home. Drone moves randomly on the bottom and with time deadline for
-                  each block on the Z axis
+        :brief:  Searches for cup by randomly picking directing and avoiding obstacles
         :outcome: Position of cup on the image is somehow in the middle. Area of cup rectangle >= 2000
         :Note!: There should be only 1 red object in the room in order NOT to confuse agent.
         """
+
+        if self._env.drone.get_height() > self._drone_job_height:
+            self._env.drone.send_rc_control(0, 0, -15, 0)
+
         cur_img = self._env.GetLastImage()
         rect = Algorithms.locate_cup(cur_img)
-        if rect.is_present:
-            # move to cup in order to make rect area >= _min_cup_rect_area
-            self.LOGGER.debug("[find cup job] cup was found! Stabilizing...")
-            self._env.drone.send_rc_control(0, 0, 0, 0)
-            self._cur_state = self._pick_up_cup_state
-            pass
-        else:
-            # predict depth map in order to avoid obstacles
-            depth_map = dpt_model.predict(cur_img)
-            depth_map = depth_map[int(cur_img.shape[0] * 0.4): int(cur_img.shape[0] * 0.6),
-                                  int(cur_img.shape[1] * 0.4): int(cur_img.shape[1] * 0.6)]
-            depth_map = 255 - depth_map
-            cv.imshow("Depth map cropped", depth_map)  # debug
-            distance_cm = np.min(depth_map)
-            self.LOGGER.debug("[find cup job] distance {}".format(distance_cm))
-            if distance_cm >= self._move_from_depth_map_constant:  # means no obstacles going forward
-                self.LOGGER.debug("[find cup job] moving forward")
-                self._env.drone.send_rc_control(0, 40, 0, 0)
-                time.sleep(self._standard_moving_delay_sec)
-                # self._cur_drone_pos = (self._cur_drone_pos[0], self._cur_drone_pos[1]+1, self._cur_drone_pos[2])
-                # self._exploratory_map.add(self._cur_drone_pos)
-            else:
-                # there are some obstacle
-                self.LOGGER.debug("[find cup job] avoiding obstacle")
-                self._env.drone.rotate_clockwise(90)
-                time.sleep(self._standard_moving_delay_sec)
+
+        if rect.is_present and rect.height * rect.width >= self._min_cup_rect_area:  # cup was found
+            self.LOGGER.debug("[_find_cup_job] CUP WAS FOUND!")
+            if not self._first_time:
+                self._success_timer = time.time()
+                self._first_time = True
+            if time.time() - self._success_timer >= 2:
                 self._env.drone.send_rc_control(0, 0, 0, 0)
+                self.__change_state(self._cur_state, self._pick_up_cup_state)
+            else:
+                self._env.drone.send_rc_control(0, 0, 0, 0)
+        else:
+            self._first_time = False
+
+            # choose action
+            # 1. move forward
+            # 2. rotate 90 degrees clockwise
+            # 3. rotate 90 degrees counterclockwise
+            # 4. rotate for some time cover major piece of land
+            if self._last_fc_action == 4:
+                action = random.randint(1, 3)
+            else:
+                action = random.randint(1, 4)
+
+            self._last_fc_action = action
+            if action == 1:
+                self.LOGGER.debug("[_find_cup_job][action 1]")
+                # predict depth map in order to avoid obstacles
+                depth_map = dpt_model.predict(cur_img)
+                # cv.imshow("Depth map cropped", depth_map)  # debug
+                distance_cm = self.__get_distance_as_int(depth_map)
+                self.LOGGER.debug("[find cup job] distance {}".format(distance_cm))
+                if distance_cm >= self._should_move_dist:  # means no obstacles going forward
+                    self.__move_for(0, 20, 0, 0, timeSec=1.5)
+                else:
+                    # there are some obstacle
+                    self._env.drone.rotate_clockwise(90)
+                    self._env.drone.send_rc_control(0, 0, 0, 0)
+            elif action == 2:
+                self.LOGGER.debug("[_find_cup_job][action 2]")
+                self._env.drone.rotate_clockwise(90)
+            elif action == 3:
+                self.LOGGER.debug("[_find_cup_job][action 3]")
+                self._env.drone.rotate_counter_clockwise(90)
+            elif action == 4:
+                self.LOGGER.debug("[_find_cup_job][action 4]")
+                cur_timer = time.time()
+                while time.time() - cur_timer < 10:
+                    cur_img = self._env.GetLastImage()
+                    rect = Algorithms.locate_cup(cur_img)
+                    if rect.is_present and rect.height * rect.width >= self._min_cup_rect_area:
+                        self._env.drone.send_rc_control(0, 0, 0, 0)
+                        break
+                    self._env.drone.send_rc_control(0, 0, 0, 15)
 
     def _pick_up_cup_job(self):
         """
@@ -144,7 +212,11 @@ class Agent:
                 2. by some parabola trajectory -> try to pick up cup [only 1 try!]
                 3. transition into _fly_above_state
         """
-        pass
+        self.LOGGER.debug("[_pick_up_cup_job]")
+        if self._env.drone.get_height() > 40:
+            self._env.drone.send_rc_control(0, 0, -15, 0)
+        self._cur_state = self._manual_control_state
+
 
     def _fly_above_job(self):
         """
@@ -236,6 +308,18 @@ class Agent:
         self._cur_state = new_state
         self.LOGGER.info('State changed : `{}` -> `{}`'.format(prev_state, new_state))
 
+    def __get_distance_as_int(self, depth_map: np.ndarray) -> int:
+        """
+        :brief: cropping is done as part of this implementation
+        :param depth_map: depth map of some image
+        :return: value [0: 255] which tells distance in cm to object
+        """
+        depth_map = depth_map[int(depth_map.shape[0] * 0.35): int(depth_map.shape[0] * 0.65),
+                              int(depth_map.shape[1] * 0.35): int(depth_map.shape[1] * 0.65)]
+        depth_map = 255 - depth_map
+        distance_cm = np.min(depth_map)
+        return distance_cm
+
     def __land_job_calculate_yaw(self, x, y) -> int:
         """
         :return: [-180 : +180] value - degrees needed to rotate
@@ -249,3 +333,8 @@ class Agent:
         if degrees > 180:
             return 360 - degrees
         return degrees
+
+    def __move_for(self, lr: int, fb: int, ud: int, yaw: int, timeSec: float):
+        cur_time = time.time()
+        while time.time() - cur_time <= timeSec:
+            self._env.drone.send_rc_control(lr, fb, ud, yaw)
