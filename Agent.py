@@ -186,7 +186,7 @@ class Agent:
             self.LOGGER.debug("[find cup job] distance {}".format(distance_cm))
             if distance_cm >= self._should_move_dist:  # means no obstacles going forward
                 self.LOGGER.debug("[find cup job] move forward")
-                self.__move_for(0, 20, 0, 0, timeSec=1.5)
+                self.__move_for(0, 20, 0, 0, timeSec=0.2)
                 self.__stabilize()
             else:  # there is some obstacle
                 # rotate
@@ -205,38 +205,37 @@ class Agent:
                 3. transition into _fly_above_state
         """
         self.LOGGER.debug("[_pick_up_cup_job]")
-        img = self.__get_last_image_where_cup_was_found()
-        if img is None:
-            self.LOGGER.debug("[_pick_up_cup_job] Cup wasn't found anywhere...")
-            self.__stabilize()
-            return
+        # debug show current image
+        cv.imshow("Cur Image", self._env.GetLastImage())
+
+        img = self._env.GetLastImage()
 
         cup_rect = Algorithms.locate_cup(img)
         if cup_rect.is_present:  # should be true
             cv.rectangle(img, (cup_rect.x, cup_rect.y), (cup_rect.x + cup_rect.width, cup_rect.y + cup_rect.height), (255, 0, 0), 3)
             cv.imshow("[_pick_up_cup_job]", img)
-            x_mid = int((cup_rect.x + cup_rect.width)/2)
-            y_mid = int((cup_rect.y + cup_rect.height)/2)
+            x_mid = int((cup_rect.x + cup_rect.x + cup_rect.width)/2)
+            y_mid = int((cup_rect.y + cup_rect.y + cup_rect.height)/2)
             self.LOGGER.debug("[_pick_up_cup_job] x: {}, y: {}".format(x_mid, y_mid))
 
             if x_mid < img.shape[0] * 0.4:
-                self.__move_for(0, 0, 0, -20, timeSec=0.1)
+                self.__move_for(0, 0, 0, -20, timeSec=0.2)
                 self.LOGGER.debug("[_pick_up_cup_job] rotating left")
                 self.__stabilize()
             elif x_mid > img.shape[0] * 0.6:
-                self.__move_for(0, 0, 0, 20, timeSec=0.1)
+                self.__move_for(0, 0, 0, 20, timeSec=0.2)
                 self.LOGGER.debug("[_pick_up_cup_job] rotating right")
                 self.__stabilize()
-            elif y_mid > img.shape[1] * 0.8:
-                self.__move_for(0, 0, -20, 0, timeSec=1)
+            if y_mid > img.shape[1] * 0.8:
+                self.__move_for(0, 0, -20, 0, timeSec=0.1)
                 self.LOGGER.debug("[_pick_up_cup_job] moving down")
                 self.__stabilize()
             elif y_mid < img.shape[1] * 0.2:
-                self.__move_for(0, 0, 20, 0, timeSec=1)
+                self.__move_for(0, 0, 20, 0, timeSec=0.1)
                 self.LOGGER.debug("[_pick_up_cup_job] moving up")
                 self.__stabilize()
             else:
-                self.__move_for(0, 15, 0, 0, timeSec=1)
+                self.__move_for(0, 15, 0, 0, timeSec=0.2)
                 self.LOGGER.debug("[_pick_up_cup_job] moving forward")
                 self.__stabilize()
         else:
@@ -246,7 +245,7 @@ class Agent:
             else:
                 # temporal solution
                 self.__stabilize()
-                self.LOGGER.debug("[_pick_up_cup_job] Lost vision of cup. Stabilizing...")
+                self.LOGGER.debug("[_pick_up_cup_job] Lost vision of cup. Cup should be nearby...")
                 # action = random.randint(1, 2)
                 # if action == 1:
                 #     self.__move_for(0, 0, 0, 25, timeSec=3)
@@ -380,7 +379,7 @@ class Agent:
 
     def __get_last_image_where_cup_was_found(self) -> np.ndarray | None:
         image_list = self._env.GetImages()
-        for _, img in reversed(image_list):
+        for _, img in reversed(image_list[max(0, len(image_list) - 100):]):
             cup_rect = Algorithms.locate_cup(img)
             if cup_rect.is_present:
                 return img
