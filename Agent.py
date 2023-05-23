@@ -25,7 +25,7 @@ class Agent:
     _pick_up_cup_state = "pick up cup state"
     _put_down_cup_state = "put down cup state"
     _wait_until_human_will_take_cup_state = "wait until human will take cup state"
-    _fly_above_state = "fly above state"
+    _fly_with_cup_state = "fly with cup state"
     _land_state = "land state"
     _final_state = "final state"
     _manual_control_state = "manual control state"
@@ -59,7 +59,7 @@ class Agent:
             self._land_state: self._land_job,
             self._final_state: self._final_job,
             self._wait_until_human_will_take_cup_state: self._wait_until_human_will_take_cup_job,
-            self._fly_above_state: self._fly_above_job,
+            self._fly_with_cup_state: self._fly_above_job,
             self._manual_control_state: self._manual_control_job,
         }
         # key is a tuple (x, y, z) that indicates drone position
@@ -205,6 +205,8 @@ class Agent:
                 3. transition into _fly_above_state
         """
         self.LOGGER.debug("[_pick_up_cup_job]")
+        self.LOGGER.debug("[_pick_up_cup_job] height: {}".format(self._env.drone.get_height()))
+
         # debug show current image
         cv.imshow("Cur Image", self._env.GetLastImage())
 
@@ -218,19 +220,19 @@ class Agent:
             y_mid = int((cup_rect.y + cup_rect.y + cup_rect.height)/2)
             self.LOGGER.debug("[_pick_up_cup_job] x: {}, y: {}".format(x_mid, y_mid))
 
-            if x_mid < img.shape[0] * 0.4:
+            if x_mid < img.shape[0] * 0.45:
                 self.__move_for(0, 0, 0, -20, timeSec=0.2)
                 self.LOGGER.debug("[_pick_up_cup_job] rotating left")
                 self.__stabilize()
-            elif x_mid > img.shape[0] * 0.6:
+            elif x_mid > img.shape[0] * 0.55:
                 self.__move_for(0, 0, 0, 20, timeSec=0.2)
                 self.LOGGER.debug("[_pick_up_cup_job] rotating right")
                 self.__stabilize()
-            if y_mid > img.shape[1] * 0.8:
+            if y_mid > img.shape[1] * 0.8 and cup_rect.width * cup_rect.height >= 2000:
                 self.__move_for(0, 0, -20, 0, timeSec=0.1)
-                self.LOGGER.debug("[_pick_up_cup_job] moving down")
+                self.LOGGER.debug("[_pick_up_cup_job] moving down, cup area: {}".format(cup_rect.width * cup_rect.height))
                 self.__stabilize()
-            elif y_mid < img.shape[1] * 0.2:
+            elif y_mid < img.shape[1] * 0.3:
                 self.__move_for(0, 0, 20, 0, timeSec=0.1)
                 self.LOGGER.debug("[_pick_up_cup_job] moving up")
                 self.__stabilize()
@@ -239,12 +241,22 @@ class Agent:
                 self.LOGGER.debug("[_pick_up_cup_job] moving forward")
                 self.__stabilize()
         else:
-            if self._env.drone.get_height() > 20:
-                self._env.drone.send_rc_control(0, 0, -15, 0)
+            if self._env.drone.get_height() > 25:
                 self.LOGGER.debug("[_pick_up_cup_job] Moving down")
-            else:
-                # temporal solution
+                self.__move_for(0, 0, -15, 0, timeSec=0.3)
                 self.__stabilize()
+            else:
+                self.__stabilize()
+
+                self.LOGGER.debug("[_pick_up_cup_job] Prepare to hook up cup ...")
+
+                self.__move_for(0, 0, -5, 0, timeSec=5)
+
+                # try to hook up cup
+                self.LOGGER.debug("[_pick_up_cup_job] hooking cup...")
+                self.__move_for(0, 30, 10, 0, timeSec=2)
+                # no chance it failed.
+                self.__change_state(self._cur_state, self._fly_with_cup_state)
                 self.LOGGER.debug("[_pick_up_cup_job] Lost vision of cup. Cup should be nearby...")
 
 
@@ -254,8 +266,8 @@ class Agent:
         :brief:      -> flies on a specific position and then holds
         :transition: -> wait_until_human_will_take_cup
         """
-        if self._env.drone.get_height() < 100:
-            self._env.drone.send_rc_control(0, 0, 60, 0)
+        if self._env.drone.get_height() < 120:
+            self._env.drone.send_rc_control(0, 0, 90, 0)
         else:
             self._cur_state = self._wait_until_human_will_take_cup_state
 
