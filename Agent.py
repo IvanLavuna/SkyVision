@@ -239,18 +239,14 @@ class Agent:
                 self.LOGGER.debug("[_pick_up_cup_job] moving forward")
                 self.__stabilize()
         else:
-            if self._env.drone.get_height() > 30:
+            if self._env.drone.get_height() > 20:
                 self._env.drone.send_rc_control(0, 0, -15, 0)
                 self.LOGGER.debug("[_pick_up_cup_job] Moving down")
             else:
                 # temporal solution
                 self.__stabilize()
                 self.LOGGER.debug("[_pick_up_cup_job] Lost vision of cup. Cup should be nearby...")
-                # action = random.randint(1, 2)
-                # if action == 1:
-                #     self.__move_for(0, 0, 0, 25, timeSec=3)
-                # else:
-                #     self.__move_for(0, 0, 0, -25, timeSec=3)
+
 
 
     def _fly_above_job(self):
