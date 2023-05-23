@@ -241,7 +241,7 @@ class Agent:
                 self.LOGGER.debug("[_pick_up_cup_job] moving forward")
                 self.__stabilize()
         else:
-            if self._env.drone.get_height() > 25:
+            if self._env.drone.get_height() > 20:
                 self.LOGGER.debug("[_pick_up_cup_job] Moving down")
                 self.__move_for(0, 0, -15, 0, timeSec=0.3)
                 self.__stabilize()
