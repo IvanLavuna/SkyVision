@@ -1,5 +1,7 @@
 import time
 import logging
+from typing import Any
+
 import Algorithms
 from Environment import Environment
 from DPT import dpt_model
@@ -133,7 +135,7 @@ class Agent:
     # hyperparameters & variables of job state
     _min_cup_rect_area = 300
     _should_move_dist = 60
-    _drone_job_height = 70
+    _drone_job_height = 40
     _success_timer = time.time()
     _first_time = False
     _last_fc_action = 0
@@ -155,8 +157,9 @@ class Agent:
         cur_img = self._env.GetLastImage()
         rect = Algorithms.locate_cup(cur_img)
 
-        if rect.is_present and rect.height * rect.width >= self._min_cup_rect_area:  # cup was found
+        if rect.is_present:  # cup was found
             cv.rectangle(cur_img, (rect.x, rect.y), (rect.x + rect.width, rect.y + rect.height), (255, 0, 0), 3)
+            cv.imshow("[_find_cup_job]", cur_img)
 
             self.LOGGER.debug("[_find_cup_job] CUP WAS FOUND!")
             if not self._first_time:
@@ -182,29 +185,74 @@ class Agent:
             distance_cm = self.__get_distance_as_int(depth_map)
             self.LOGGER.debug("[find cup job] distance {}".format(distance_cm))
             if distance_cm >= self._should_move_dist:  # means no obstacles going forward
-                self.__move_for(0, 20, 0, 0, timeSec=1.5)
                 self.LOGGER.debug("[find cup job] move forward")
-                self.__move_for(0, 0, 0, 0, timeSec=0.2)
+                self.__move_for(0, 20, 0, 0, timeSec=1.5)
+                self.__stabilize()
             else:  # there is some obstacle
                 # rotate
-                self.__move_for(0, 0, 0, 20, timeSec=6)
                 self.LOGGER.debug("[find cup job] rotate")
-                self.__move_for(0, 0, 0, 0, timeSec=0.2)
+                self.__move_for(0, 0, 0, 40, timeSec=3)
+                self.__stabilize()
 
-        cv.imshow("find cup", cur_img)
 
     def _pick_up_cup_job(self):
         """
         :brief: Assumes that cup was found. Pick up cup means hook it and fly up on some distance above ground
+                Вперед і вгору
         :transition: -> _fly_above
         :algo:  1. minimize distance between drone and cup until specific point
                 2. by some parabola trajectory -> try to pick up cup [only 1 try!]
                 3. transition into _fly_above_state
         """
         self.LOGGER.debug("[_pick_up_cup_job]")
-        if self._env.drone.get_height() > 40:
-            self._env.drone.send_rc_control(0, 0, -15, 0)
-        self._cur_state = self._manual_control_state
+        img = self.__get_last_image_where_cup_was_found()
+        if img is None:
+            self.LOGGER.debug("[_pick_up_cup_job] Cup wasn't found anywhere...")
+            self.__stabilize()
+            return
+
+        cup_rect = Algorithms.locate_cup(img)
+        if cup_rect.is_present:  # should be true
+            cv.rectangle(img, (cup_rect.x, cup_rect.y), (cup_rect.x + cup_rect.width, cup_rect.y + cup_rect.height), (255, 0, 0), 3)
+            cv.imshow("[_pick_up_cup_job]", img)
+            x_mid = int((cup_rect.x + cup_rect.width)/2)
+            y_mid = int((cup_rect.y + cup_rect.height)/2)
+            self.LOGGER.debug("[_pick_up_cup_job] x: {}, y: {}".format(x_mid, y_mid))
+
+            if x_mid < img.shape[0] * 0.4:
+                self.__move_for(0, 0, 0, -20, timeSec=0.1)
+                self.LOGGER.debug("[_pick_up_cup_job] rotating left")
+                self.__stabilize()
+            elif x_mid > img.shape[0] * 0.6:
+                self.__move_for(0, 0, 0, 20, timeSec=0.1)
+                self.LOGGER.debug("[_pick_up_cup_job] rotating right")
+                self.__stabilize()
+            elif y_mid > img.shape[1] * 0.8:
+                self.__move_for(0, 0, -20, 0, timeSec=1)
+                self.LOGGER.debug("[_pick_up_cup_job] moving down")
+                self.__stabilize()
+            elif y_mid < img.shape[1] * 0.2:
+                self.__move_for(0, 0, 20, 0, timeSec=1)
+                self.LOGGER.debug("[_pick_up_cup_job] moving up")
+                self.__stabilize()
+            else:
+                self.__move_for(0, 15, 0, 0, timeSec=1)
+                self.LOGGER.debug("[_pick_up_cup_job] moving forward")
+                self.__stabilize()
+        else:
+            if self._env.drone.get_height() > 30:
+                self._env.drone.send_rc_control(0, 0, -15, 0)
+                self.LOGGER.debug("[_pick_up_cup_job] Moving down")
+            else:
+                # temporal solution
+                self.__stabilize()
+                self.LOGGER.debug("[_pick_up_cup_job] Lost vision of cup. Stabilizing...")
+                # action = random.randint(1, 2)
+                # if action == 1:
+                #     self.__move_for(0, 0, 0, 25, timeSec=3)
+                # else:
+                #     self.__move_for(0, 0, 0, -25, timeSec=3)
+
 
     def _fly_above_job(self):
         """
@@ -286,6 +334,9 @@ class Agent:
         UTILS
     """
 
+    def __stabilize(self):
+        self.__move_for(0, 0, 0, 0, timeSec=0.2)
+
     def __update_camera_direction(self, new_direction: int):
         if self._cur_camera_direction == new_direction:
             return
@@ -326,3 +377,11 @@ class Agent:
         cur_time = time.time()
         while time.time() - cur_time <= timeSec:
             self._env.drone.send_rc_control(lr, fb, ud, yaw)
+
+    def __get_last_image_where_cup_was_found(self) -> np.ndarray | None:
+        image_list = self._env.GetImages()
+        for _, img in reversed(image_list):
+            cup_rect = Algorithms.locate_cup(img)
+            if cup_rect.is_present:
+                return img
+        return None

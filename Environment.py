@@ -12,14 +12,17 @@ class Environment:
         :drone - tello object
     :note! This class may extend if needed
     '''
-    MAX_IMAGES = 100
+    MAX_IMAGES = 1000
 
     def __init__(self, drone: tello.Tello):
         self.drone = drone
         self._image_list = []
 
     def AddImage(self, img: np.ndarray):
+        if len(self._image_list) >= self.MAX_IMAGES:
+            self._image_list.pop(0)
         self._image_list.append((time.time(), img))
+
 
     def PopImage(self):
         self._image_list.pop(0)
