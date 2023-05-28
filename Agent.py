@@ -25,6 +25,7 @@ class Agent:
     _pick_up_cup_part1_state = "pick up cup part1 state"
     _pick_up_cup_part2_state = "pick up cup part2 state"
     _pick_up_cup_part3_state = "pick up cup part3 state"
+    _search_for_helipad_state = "search for helipad state"
     _put_down_cup_state = "put down cup state"
     _wait_until_human_will_take_cup_state = "wait until human will take cup state"
     _land_state = "land state"
@@ -63,6 +64,7 @@ class Agent:
             self._final_state: self._final_job,
             self._wait_until_human_will_take_cup_state: self._wait_until_human_will_take_cup_job,
             self._manual_control_state: self._manual_control_job,
+            self._search_for_helipad_state: self._search_for_helipad_job,
         }
         # key is a tuple (x, y, z) that indicates drone position
         self._exploratory_map = set()
@@ -79,10 +81,12 @@ class Agent:
 
     def _wait_until_human_will_take_cup_job(self):
         """
-        :brief: For now it will just hang in the air.
-                Later it should recognise from bottom camera that human took a cup
-        :return:
+        :brief: waits until human will take a cup from drone. Uses bottom camera to figure it out
+        :transition: _land_state
         """
+        if self._cur_camera_direction != self.TELLO_CAMERA_DOWNWARD:
+            self.__update_camera_direction(self.TELLO_CAMERA_DOWNWARD)
+            return
         self._env.drone.send_rc_control(0, 0, 0, 0)
         pass
 
@@ -325,12 +329,20 @@ class Agent:
         :brief:      -> flies on a specific position and then holds
         :transition: -> wait_until_human_will_take_cup
         """
-        if self._env.drone.get_height() < 120:
+        if self._env.drone.get_height() < 100:
             self._env.drone.send_rc_control(0, 0, 90, 0)
         else:
             self._cur_state = self._wait_until_human_will_take_cup_state
 
     def _put_down_cup_job(self):
+        pass
+
+    def _search_for_helipad_job(self):
+        """
+        :brief: searches for helipad by localization through visual markers
+        :transition: _land_state
+        :return:
+        """
         pass
 
     def _land_job(self):
@@ -343,16 +355,10 @@ class Agent:
                      3. Call embed tello function for landing
         :time:       ?
         """
-        if self._land_job_complete:
-            return
+
         if self._cur_camera_direction != self.TELLO_CAMERA_DOWNWARD:
             self.__update_camera_direction(self.TELLO_CAMERA_DOWNWARD)
             return
-
-        # take off
-        if not self._env.drone.is_flying:
-            self._env.drone.takeoff()
-            time.sleep(3)  # give some time for tello to take off
 
         img = self._env.GetLastImage()
         circles = Algorithms.locate_circles(img)
