@@ -12,6 +12,7 @@ import math
 import KeyPress as kp
 import random
 
+images_path = "/home/lavuna47/Projects/SkyVision/images"
 
 class Agent:
     """
@@ -51,7 +52,7 @@ class Agent:
     _downward_camera_center = (200, 180)
 
     def __init__(self, env: Environment):
-        self._cur_state = self._initialization_state
+        self._cur_state = self._wait_until_human_will_take_cup_state
         self._env = env
         self._jobs = {
             self._initialization_state: self._initialization_job,
@@ -87,7 +88,15 @@ class Agent:
         if self._cur_camera_direction != self.TELLO_CAMERA_DOWNWARD:
             self.__update_camera_direction(self.TELLO_CAMERA_DOWNWARD)
             return
-        self._env.drone.send_rc_control(0, 0, 0, 0)
+
+        img = self._env.GetLastImage()
+
+        # 6. save image if z was pressed
+        if kp.get_key('z'):
+            cv.imwrite(f"{images_path}/drone_with_cup.jpg", img)
+            time.sleep(0.5)
+
+        cv.imshow("_wait_until_human_will_take_cup_job", img)
         pass
 
     def _initialization_job(self):

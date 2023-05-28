@@ -33,7 +33,7 @@ def processing_loop():
         # 4. agent control
         agent.next_move()
 
-        # 5. wait 1 ms. Stabilization?
+        # 5. wait 1 ms
         cv.waitKey(1)
 
         # 6. save image if z was pressed
