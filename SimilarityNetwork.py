@@ -1,3 +1,6 @@
+import os
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 from keras.applications.vgg16 import VGG16
 from keras.applications.vgg16 import preprocess_input
 from keras.preprocessing import image
@@ -26,8 +29,8 @@ def similarity_score(img1: np.ndarray, img2: np.ndarray) -> float:
     img2_features = _get_features(img2)
 
     # Normalize the feature vectors
-    img1_features_norm = normalize([img1_features])
-    img2_features_norm = normalize([img2_features])
+    img1_features_norm = normalize([img1_features])[0]
+    img2_features_norm = normalize([img2_features])[0]
 
     # Compute similarity (Euclidean distance) between the features
     similarity = distance.euclidean(img1_features_norm, img2_features_norm)

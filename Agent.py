@@ -10,6 +10,7 @@ import cv2 as cv
 import datetime
 import math
 import KeyPress as kp
+from SimilarityNetwork import similarity_score
 import random
 
 images_path = "/home/lavuna47/Projects/SkyVision/images"
@@ -52,7 +53,7 @@ class Agent:
     _downward_camera_center = (200, 180)
 
     def __init__(self, env: Environment):
-        self._cur_state = self._wait_until_human_will_take_cup_state
+        self._cur_state = self._initialization_state
         self._env = env
         self._jobs = {
             self._initialization_state: self._initialization_job,
@@ -72,6 +73,7 @@ class Agent:
         self._cur_drone_pos = (0, 0, 0)
         self._cur_camera_direction = self.TELLO_CAMERA_FORWARD
         self._land_job_complete = False
+        self._drone_with_cup_img = cv.imread(f"{images_path}/drone_with_cup.jpg")
 
     def next_move(self):
         # execute job for current state
@@ -82,21 +84,16 @@ class Agent:
 
     def _wait_until_human_will_take_cup_job(self):
         """
-        :brief: waits until human will take a cup from drone. Uses bottom camera to figure it out
-        :transition: _land_state
+        :brief: waits until human will take a cup from drone. Should use bottom camera to figure it out, but for now
+                just waits for some time
+        :transition: _search_for_helipad_state
         """
-        if self._cur_camera_direction != self.TELLO_CAMERA_DOWNWARD:
-            self.__update_camera_direction(self.TELLO_CAMERA_DOWNWARD)
-            return
-
-        img = self._env.GetLastImage()
-
-        # 6. save image if z was pressed
-        if kp.get_key('z'):
-            cv.imwrite(f"{images_path}/drone_with_cup.jpg", img)
-            time.sleep(0.5)
-
-        cv.imshow("_wait_until_human_will_take_cup_job", img)
+        self.LOGGER.debug("[_wait_until_human_will_take_cup_job]")
+        # if self._cur_camera_direction != self.TELLO_CAMERA_DOWNWARD:
+        #     self.__update_camera_direction(self.TELLO_CAMERA_DOWNWARD)
+        #     return
+        self.__move_for(0, 0, 0, 0, timeSec=10)
+        self.__change_state(self._cur_state, self._search_for_helipad_state)
         pass
 
     def _initialization_job(self):
@@ -208,7 +205,6 @@ class Agent:
                 self.LOGGER.debug("[find cup job] rotate")
                 self.__move_for(0, 0, 0, 40, timeSec=3)
                 self.__stabilize()
-
 
     def _pick_up_cup_part1_job(self):
         """
@@ -341,7 +337,7 @@ class Agent:
         if self._env.drone.get_height() < 100:
             self._env.drone.send_rc_control(0, 0, 90, 0)
         else:
-            self._cur_state = self._wait_until_human_will_take_cup_state
+            self.__change_state(self._cur_state, self._wait_until_human_will_take_cup_state)
 
     def _put_down_cup_job(self):
         pass
@@ -352,6 +348,8 @@ class Agent:
         :transition: _land_state
         :return:
         """
+        self.LOGGER.debug("[_search_for_helipad_job]")
+        self._env.drone.send_rc_control(0, 0, 0, 0)
         pass
 
     def _land_job(self):
