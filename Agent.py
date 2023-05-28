@@ -22,10 +22,11 @@ class Agent:
     # possible states of the Agent
     _initialization_state = "initialization state"
     _find_cup_state = "find cup state"
-    _pick_up_cup_state = "pick up cup state"
+    _pick_up_cup_part1_state = "pick up cup part1 state"
+    _pick_up_cup_part2_state = "pick up cup part2 state"
+    _pick_up_cup_part3_state = "pick up cup part3 state"
     _put_down_cup_state = "put down cup state"
     _wait_until_human_will_take_cup_state = "wait until human will take cup state"
-    _fly_with_cup_state = "fly with cup state"
     _land_state = "land state"
     _final_state = "final state"
     _manual_control_state = "manual control state"
@@ -54,12 +55,13 @@ class Agent:
         self._jobs = {
             self._initialization_state: self._initialization_job,
             self._find_cup_state: self._find_cup_job,
-            self._pick_up_cup_state: self._pick_up_cup_job,
+            self._pick_up_cup_part1_state: self._pick_up_cup_part1_job,
+            self._pick_up_cup_part2_state: self._pick_up_cup_part2_job,
+            self._pick_up_cup_part3_state: self._pick_up_cup_part3_job,
             self._put_down_cup_state: self._put_down_cup_job,
             self._land_state: self._land_job,
             self._final_state: self._final_job,
             self._wait_until_human_will_take_cup_state: self._wait_until_human_will_take_cup_job,
-            self._fly_with_cup_state: self._fly_above_job,
             self._manual_control_state: self._manual_control_job,
         }
         # key is a tuple (x, y, z) that indicates drone position
@@ -186,7 +188,7 @@ class Agent:
             self.LOGGER.debug("[find cup job] distance {}".format(distance_cm))
             if distance_cm >= self._should_move_dist:  # means no obstacles going forward
                 self.LOGGER.debug("[find cup job] move forward")
-                self.__move_for(0, 20, 0, 0, timeSec=0.2)
+                self.__move_for(0, 20, 0, 0, timeSec=0.5)
                 self.__stabilize()
             else:  # there is some obstacle
                 # rotate
@@ -195,17 +197,15 @@ class Agent:
                 self.__stabilize()
 
 
-    def _pick_up_cup_job(self):
+    def _pick_up_cup_part1_job(self):
         """
         :brief: Assumes that cup was found. Pick up cup means hook it and fly up on some distance above ground
-                Вперед і вгору
-        :transition: -> _fly_above
+        :transition: -> _pick_up_cup_part2_state
         :algo:  1. minimize distance between drone and cup until specific point
                 2. by some parabola trajectory -> try to pick up cup [only 1 try!]
                 3. transition into _fly_above_state
         """
-        self.LOGGER.debug("[_pick_up_cup_job]")
-        self.LOGGER.debug("[_pick_up_cup_job] height: {}".format(self._env.drone.get_height()))
+        self.LOGGER.debug("[_pick_up_cup_part1_job]")
 
         # debug show current image
         cv.imshow("Cur Image", self._env.GetLastImage())
@@ -252,16 +252,49 @@ class Agent:
 
                 self.__move_for(0, 0, -5, 0, timeSec=5)
 
-                # try to hook up cup
-                self.LOGGER.debug("[_pick_up_cup_job] hooking cup...")
-                self.__move_for(0, 30, 10, 0, timeSec=2)
-                # no chance it failed.
-                self.__change_state(self._cur_state, self._fly_with_cup_state)
-                self.LOGGER.debug("[_pick_up_cup_job] Lost vision of cup. Cup should be nearby...")
+                self.__change_state(self._cur_state, self._pick_up_cup_part2_state)
 
+    def _pick_up_cup_part2_job(self):
+        """
+        :transition: -> _pick_up_cup_part3_state
+        :return:
+        """
+        self.LOGGER.debug("[_pick_up_cup_part2_job]")
 
+        # debug show current image
+        cv.imshow("Cur Image", self._env.GetLastImage())
 
-    def _fly_above_job(self):
+        img = self._env.GetLastImage()
+
+        cup_rect = Algorithms.locate_cup(img)
+        if cup_rect.is_present:
+            if cup_rect.x + cup_rect.width/2 < img.shape[0] * 0.47:
+                self.__move_for(0, 0, 0, -12, timeSec=0.1)
+                self.LOGGER.debug("[_pick_up_cup_part2_job] rotating left")
+                self.__stabilize()
+            elif cup_rect.x + cup_rect.width/2 > img.shape[0] * 0.53:
+                self.__move_for(0, 0, 0, 12, timeSec=0.1)
+                self.LOGGER.debug("[_pick_up_cup_part2_job] rotating right")
+                self.__stabilize()
+            elif cup_rect.y < img.shape[1] * 0.8:
+                self.__move_for(0, 0, 12, 0, timeSec=0.1)
+                self.LOGGER.debug("[_pick_up_cup_part2_job] moving up")
+                self.__stabilize()
+            elif cup_rect.height * cup_rect.width < 4000:
+                self.__move_for(0, 12, 0, 0, timeSec=0.1)
+                self.LOGGER.debug("[_pick_up_cup_part2_job] moving forward")
+                self.__stabilize()
+            elif cup_rect.height * cup_rect.width > 5000:
+                self.__move_for(0, -12, 0, 0, timeSec=0.1)
+                self.LOGGER.debug("[_pick_up_cup_part2_job] moving backward")
+                self.__stabilize()
+            else:
+                self.LOGGER.debug("[_pick_up_cup_part2_job] I am right on the position...")
+            pass
+        else:
+            self.__move_for(0, 0, -12, 0, timeSec=0.2)
+
+    def _pick_up_cup_part3_job(self):
         """
         :brief:      -> flies on a specific position and then holds
         :transition: -> wait_until_human_will_take_cup
