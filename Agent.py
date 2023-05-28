@@ -265,35 +265,42 @@ class Agent:
         cup_rect = Algorithms.locate_cup(img)
         if cup_rect.is_present:
             cv.rectangle(img, (cup_rect.x, cup_rect.y), (cup_rect.x + cup_rect.width, cup_rect.y + cup_rect.height), (255, 0, 0), 3)
-            if cup_rect.x + cup_rect.width/2 < img.shape[0] * 0.47:
+            ready = True
+            if cup_rect.x + cup_rect.width/2 < img.shape[0] * 0.4:
                 self.__move_for(0, 0, 0, -12, timeSec=0.1)
                 self.LOGGER.debug("[_pick_up_cup_part2_job] rotating left")
                 self.__stabilize()
-            elif cup_rect.x + cup_rect.width/2 > img.shape[0] * 0.53:
+                ready = False
+            if cup_rect.x + cup_rect.width/2 > img.shape[0] * 0.6:
                 self.__move_for(0, 0, 0, 12, timeSec=0.1)
                 self.LOGGER.debug("[_pick_up_cup_part2_job] rotating right")
                 self.__stabilize()
-            elif cup_rect.width < 170:
+                ready = False
+            if cup_rect.width < 170:
                 self.__move_for(0, 12, 0, 0, timeSec=0.1)
                 self.LOGGER.debug("[_pick_up_cup_part2_job] moving forward")
                 self.__stabilize()
-            elif cup_rect.width > 235:
+                ready = False
+            if cup_rect.width > 235:
                 self.__move_for(0, -12, 0, 0, timeSec=0.1)
                 self.LOGGER.debug("[_pick_up_cup_part2_job] moving backward")
                 self.__stabilize()
-            elif cup_rect.height < 70:
-                self.__move_for(0, 0, 15, 0, timeSec=0.1)
-                self.LOGGER.debug("[_pick_up_cup_part2_job] moving up")
-                self.__stabilize()
-            elif cup_rect.height > 100:
+                ready = False
+            if cup_rect.height < 50:
                 self.__move_for(0, 0, -15, 0, timeSec=0.1)
                 self.LOGGER.debug("[_pick_up_cup_part2_job] moving down")
                 self.__stabilize()
-            else:
+                ready = False
+            if cup_rect.height > 100:
+                self.__move_for(0, 0, 15, 0, timeSec=0.1)
+                self.LOGGER.debug("[_pick_up_cup_part2_job] moving up")
+                self.__stabilize()
+                ready = False
+            if ready:
                 self.__stabilize()
                 self.LOGGER.debug("[_pick_up_cup_part2_job] Prepare to hook up a cup")
-                self.__move_for(0, 40,
-                                0, 0, timeSec=1.2)
+                self.__move_for(0, 0, 0, 0, timeSec=2)
+                self.__move_for(0, 40, 0, 0, timeSec=1.2)
                 self.__change_state(self._cur_state, self._pick_up_cup_part3_state)
 
             self.LOGGER.debug("Area: {}".format(cup_rect.width * cup_rect.height))
@@ -307,6 +314,7 @@ class Agent:
         if kp.get_key('t'):
             self.__stabilize()
             self.LOGGER.debug("[_pick_up_cup_part2_job] Prepare to hook up a cup")
+            self.__move_for(0, 0, 0, 0, timeSec=2)
             self.__move_for(0, 40, 0, 0, timeSec=1.2)
             self.__change_state(self._cur_state, self._pick_up_cup_part3_state)
 
