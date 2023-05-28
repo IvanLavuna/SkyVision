@@ -267,32 +267,32 @@ class Agent:
             cv.rectangle(img, (cup_rect.x, cup_rect.y), (cup_rect.x + cup_rect.width, cup_rect.y + cup_rect.height), (255, 0, 0), 3)
             ready = True
             if cup_rect.x + cup_rect.width/2 < img.shape[0] * 0.4:
-                self.__move_for(0, 0, 0, -12, timeSec=0.1)
+                self.__move_for(0, 0, 0, -12, timeSec=0.2)
                 self.LOGGER.debug("[_pick_up_cup_part2_job] rotating left")
                 self.__stabilize()
                 ready = False
             if cup_rect.x + cup_rect.width/2 > img.shape[0] * 0.6:
-                self.__move_for(0, 0, 0, 12, timeSec=0.1)
+                self.__move_for(0, 0, 0, 12, timeSec=0.2)
                 self.LOGGER.debug("[_pick_up_cup_part2_job] rotating right")
                 self.__stabilize()
                 ready = False
-            if cup_rect.width < 170:
-                self.__move_for(0, 12, 0, 0, timeSec=0.1)
+            if cup_rect.width < 150:
+                self.__move_for(0, 12, 0, 0, timeSec=0.2)
                 self.LOGGER.debug("[_pick_up_cup_part2_job] moving forward")
                 self.__stabilize()
                 ready = False
-            if cup_rect.width > 235:
-                self.__move_for(0, -12, 0, 0, timeSec=0.1)
+            if cup_rect.width > 245:
+                self.__move_for(0, -12, 0, 0, timeSec=0.2)
                 self.LOGGER.debug("[_pick_up_cup_part2_job] moving backward")
                 self.__stabilize()
                 ready = False
             if cup_rect.height < 50:
-                self.__move_for(0, 0, -15, 0, timeSec=0.1)
+                self.__move_for(0, 0, -15, 0, timeSec=0.2)
                 self.LOGGER.debug("[_pick_up_cup_part2_job] moving down")
                 self.__stabilize()
                 ready = False
             if cup_rect.height > 100:
-                self.__move_for(0, 0, 15, 0, timeSec=0.1)
+                self.__move_for(0, 0, 15, 0, timeSec=0.2)
                 self.LOGGER.debug("[_pick_up_cup_part2_job] moving up")
                 self.__stabilize()
                 ready = False
