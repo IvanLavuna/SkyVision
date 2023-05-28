@@ -79,6 +79,10 @@ def locate_cup(img: np.ndarray) -> Rectangle:
     return Rectangle()
 
 
+def locate_helipad_marker(img: np.ndarray) -> Rectangle:
+    return locate_cup(img)
+
+
 def locate_circles(img: np.ndarray) -> list[Circle]:
     """
     :param img: searching area

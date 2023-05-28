@@ -198,12 +198,12 @@ class Agent:
             self.LOGGER.debug("[find cup job] distance {}".format(distance_cm))
             if distance_cm >= self._should_move_dist:  # means no obstacles going forward
                 self.LOGGER.debug("[find cup job] move forward")
-                self.__move_for(0, 20, 0, 0, timeSec=0.5)
+                self.__move_for(0, 15, 0, 0, timeSec=0.5)
                 self.__stabilize()
             else:  # there is some obstacle
                 # rotate
                 self.LOGGER.debug("[find cup job] rotate")
-                self.__move_for(0, 0, 0, 40, timeSec=3)
+                self.__move_for(0, 0, 0, 40, timeSec=2)
                 self.__stabilize()
 
     def _pick_up_cup_part1_job(self):
@@ -349,6 +349,35 @@ class Agent:
         :return:
         """
         self.LOGGER.debug("[_search_for_helipad_job]")
+        if self._env.drone.get_height() < 100:
+            self.__move_for(0, 0, 20, 0, timeSec=1)
+            self.__stabilize()
+            return
+
+        img = self._env.GetLastImage()
+        helipad_marker = Algorithms.locate_helipad_marker(img)
+        if helipad_marker.is_present:
+            x_mid = int((helipad_marker.x + helipad_marker.x + helipad_marker.width)/2)
+            y_mid = int((helipad_marker.y + helipad_marker.y + helipad_marker.height)/2)
+            if helipad_marker.height * helipad_marker.width >= 10000:
+                self.__change_state(self._cur_state, self._land_state)
+            if x_mid < img.shape[0] * 0.45:
+                self.__move_for(0, 0, 0, -20, timeSec=0.2)
+                self.LOGGER.debug("[_search_for_helipad_job] rotating left")
+                self.__stabilize()
+            elif x_mid > img.shape[0] * 0.55:
+                self.__move_for(0, 0, 0, 20, timeSec=0.2)
+                self.LOGGER.debug("[_search_for_helipad_job] rotating right")
+                self.__stabilize()
+            else:
+                self.__move_for(0, 20, 0, 0, timeSec=0.2)
+                self.LOGGER.debug("[_search_for_helipad_job] moving forward")
+                self.__stabilize()
+        else:
+            self.__move_for(0, 0, 0, -20, timeSec=0.2)
+            self.LOGGER.debug("[_search_for_helipad_job] helipad not found. rotating left")
+            self.__stabilize()
+
         self._env.drone.send_rc_control(0, 0, 0, 0)
         pass
 
@@ -371,7 +400,7 @@ class Agent:
         circles = Algorithms.locate_circles(img)
         cv.circle(img, self._downward_camera_center, 3, (255, 0, 0), 5)
 
-        if self._env.drone.get_height() >= 60:
+        if self._env.drone.get_height() >= 70:
             self._env.drone.send_rc_control(0, 0, -20, 0)
         elif len(circles) != 0:
             # debug, visualization
@@ -387,7 +416,7 @@ class Agent:
             self.LOGGER.debug("height: {}".format(self._env.drone.get_height()))
             if dist_to_center <= 20:
                 self._env.drone.land()
-                self._land_job_complete = True
+                self.__change_state(self._cur_state, self._final_state)
             elif dist_to_center <= 100:
                 self.LOGGER.debug("dist_to_center <= 100")
                 fb = -int(5 * math.cos(math.radians(yaw)))
@@ -407,6 +436,7 @@ class Agent:
         cv.imshow("Downward camera img", img)
 
     def _final_job(self):
+        self.LOGGER.debug("[_final_job]")
         pass
 
     """
