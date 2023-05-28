@@ -247,11 +247,7 @@ class Agent:
                 self.__stabilize()
             else:
                 self.__stabilize()
-
-                self.LOGGER.debug("[_pick_up_cup_part1_job] Prepare to hook up cup ...")
-
                 self.__move_for(0, 0, -5, 0, timeSec=5)
-
                 self.__change_state(self._cur_state, self._pick_up_cup_part2_state)
 
     def _pick_up_cup_part2_job(self):
@@ -269,7 +265,6 @@ class Agent:
         cup_rect = Algorithms.locate_cup(img)
         if cup_rect.is_present:
             cv.rectangle(img, (cup_rect.x, cup_rect.y), (cup_rect.x + cup_rect.width, cup_rect.y + cup_rect.height), (255, 0, 0), 3)
-            cv.imshow("[_pick_up_cup_part2_job]", img)
             if cup_rect.x + cup_rect.width/2 < img.shape[0] * 0.47:
                 self.__move_for(0, 0, 0, -12, timeSec=0.1)
                 self.LOGGER.debug("[_pick_up_cup_part2_job] rotating left")
@@ -278,24 +273,44 @@ class Agent:
                 self.__move_for(0, 0, 0, 12, timeSec=0.1)
                 self.LOGGER.debug("[_pick_up_cup_part2_job] rotating right")
                 self.__stabilize()
-            elif cup_rect.y < img.shape[1] * 0.8:
-                self.__move_for(0, 0, 12, 0, timeSec=0.1)
-                self.LOGGER.debug("[_pick_up_cup_part2_job] moving up")
-                self.__stabilize()
-            elif cup_rect.height * cup_rect.width < 1000:
+            elif cup_rect.width < 170:
                 self.__move_for(0, 12, 0, 0, timeSec=0.1)
                 self.LOGGER.debug("[_pick_up_cup_part2_job] moving forward")
                 self.__stabilize()
-            elif cup_rect.height * cup_rect.width > 1500:
+            elif cup_rect.width > 235:
                 self.__move_for(0, -12, 0, 0, timeSec=0.1)
                 self.LOGGER.debug("[_pick_up_cup_part2_job] moving backward")
                 self.__stabilize()
+            elif cup_rect.height < 70:
+                self.__move_for(0, 0, 15, 0, timeSec=0.1)
+                self.LOGGER.debug("[_pick_up_cup_part2_job] moving up")
+                self.__stabilize()
+            elif cup_rect.height > 100:
+                self.__move_for(0, 0, -15, 0, timeSec=0.1)
+                self.LOGGER.debug("[_pick_up_cup_part2_job] moving down")
+                self.__stabilize()
             else:
-                self.LOGGER.debug("[_pick_up_cup_part2_job] I am right on the position...")
-            pass
+                self.__stabilize()
+                self.LOGGER.debug("[_pick_up_cup_part2_job] Prepare to hook up a cup")
+                self.__move_for(0, 40,
+                                0, 0, timeSec=1.2)
+                self.__change_state(self._cur_state, self._pick_up_cup_part3_state)
+
+            self.LOGGER.debug("Area: {}".format(cup_rect.width * cup_rect.height))
+            self.LOGGER.debug("Width: {}".format(cup_rect.width))
+            self.LOGGER.debug("Height: {}".format(cup_rect.height))
+
         else:
             self.__move_for(0, 0, -12, 0, timeSec=0.2)
             self.LOGGER.debug("[_pick_up_cup_part2_job] moving down...")
+
+        if kp.get_key('t'):
+            self.__stabilize()
+            self.LOGGER.debug("[_pick_up_cup_part2_job] Prepare to hook up a cup")
+            self.__move_for(0, 40, 0, 0, timeSec=1.2)
+            self.__change_state(self._cur_state, self._pick_up_cup_part3_state)
+
+        cv.imshow("[_pick_up_cup_part2_job]", img)
 
     def _pick_up_cup_part3_job(self):
         """

@@ -73,7 +73,7 @@ def locate_cup(img: np.ndarray) -> Rectangle:
     red_regions = cv.bitwise_and(img, img, mask=mask)
 
     l, r, u, d = find_bounding_box(red_regions)
-    if (r - l) * (d - u) > 1000 and l != 0 and r != 0 and u != 0 and d != 0:
+    if (r - l) * (d - u) > 1000 and r != 0 and d != 0:
         return Rectangle(l, u, r - l, d - u, True)
 
     return Rectangle()
